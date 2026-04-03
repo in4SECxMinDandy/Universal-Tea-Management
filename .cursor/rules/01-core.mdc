@@ -1,0 +1,71 @@
+---
+description: Core coding standards for UniTEA food store project
+alwaysApply: true
+---
+
+# UniTEA Food Store — Core Standards
+
+## Project Context
+
+This is a Next.js 15 (App Router) + Tailwind CSS + TypeScript + Supabase food store application.
+
+## File Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── admin/              # Admin panel routes
+│   ├── chat/               # User chat
+│   ├── gioi-thieu/         # About page
+│   ├── login/              # Auth
+│   ├── thuc-pham/          # Food catalog + detail
+│   └── page.tsx            # Home
+├── components/
+│   ├── admin/              # Admin-specific
+│   ├── auth/               # RoleGate, AuthGate
+│   ├── food/               # FoodCard, etc.
+│   └── layout/             # Header, Footer
+└── lib/
+    ├── supabase/           # client.ts, server.ts
+    └── utils.ts            # cn(), formatPrice()
+```
+
+## Essential Rules
+
+- Use `'use client'` for any component using hooks (useState, useEffect, useRouter, etc.)
+- Server Components fetch data directly with `createClient()` from `@/lib/supabase/server`
+- Client Components use `createClient()` from `@/lib/supabase/client`
+- Always use `import type` for type-only imports
+- Prefer `interface` over `type` for object shapes
+- Never use `any` — use `unknown` with type guards
+- Add `cursor-pointer` to all clickable elements
+- Add `transition-colors` for hover effects (150-300ms)
+- Format prices with `formatPrice()` from `@/lib/utils`
+- Use Lucide React icons — never emoji icons
+- Tailwind: `text-primary` = `#111111`, `primary` = `#111111`
+
+## Component Patterns
+
+- **Server Components**: async, no hooks, data fetching via server client
+- **Client Components**: `'use client'`, useState/useEffect, browser client
+- **Layouts**: wrap with `RoleGate` when role restriction needed
+- **Auth pages**: use `AuthGate` wrapper for protected routes
+- **Forms**: handle loading state, error display, disabled buttons
+
+## Supabase Patterns
+
+- Browser client: `createClient()` from `@/lib/supabase/client`
+- Server client: `createClient()` from `@/lib/supabase/server`
+- Realtime: `supabase.channel()` → `.on('postgres_changes', ...)` → `.subscribe()`
+- RLS policies are already set in DB — queries work automatically
+- Soft delete: use `supabase.from('foods').delete().eq('id', id)` — trigger sets `deleted_at`
+
+## Style Guidelines
+
+- Use `max-w-6xl mx-auto px-4` for page containers
+- Use `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6` for card grids
+- Mobile-first responsive: `hidden md:flex`, `md:hidden`
+- Hover: `hover:text-primary`, `hover:bg-gray-50`, `hover:shadow-md`
+- Focus: buttons have implicit focus styles via Tailwind
+- Error states: `text-red-500 text-sm`
+- Loading: `animate-spin` spinner, `opacity-50` for disabled buttons

@@ -1,0 +1,116 @@
+---
+description: Tailwind CSS styles and patterns for this project
+globs: ["**/*.tsx", "**/*.css"]
+alwaysApply: false
+---
+
+# Tailwind CSS Styles
+
+## Design Tokens
+
+```css
+/* globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #111111;
+}
+```
+
+## Color Classes
+
+| Purpose | Class | Value |
+|---|---|---|
+| Primary text/buttons | `text-primary`, `bg-primary` | `#111111` |
+| White backgrounds | `bg-white` | `#ffffff` |
+| Gray borders | `border`, `border-gray-200` | `#e5e7eb` |
+| Gray text | `text-gray-500`, `text-gray-600` | varies |
+| Gray backgrounds | `bg-gray-50`, `bg-gray-100` | varies |
+| Red error | `text-red-500`, `bg-red-50` | varies |
+| Green success | `bg-green-100`, `text-green-700` | varies |
+
+## Typography
+
+| Element | Classes |
+|---|---|
+| Page title | `text-3xl font-bold mb-8` |
+| Section title | `text-2xl font-bold mb-6` |
+| Card title | `font-semibold` |
+| Body text | `text-gray-600`, `text-gray-500` |
+| Price | `font-bold text-primary` |
+| Button text | `text-white`, `text-sm` |
+
+## Spacing & Layout
+
+| Pattern | Classes |
+|---|---|
+| Page container | `max-w-6xl mx-auto px-4` |
+| Card grid | `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6` |
+| Section padding | `py-12`, `py-16`, `py-20` |
+| Card padding | `p-4`, `p-6` |
+| Form gap | `flex flex-col gap-3`, `flex flex-col gap-4` |
+
+## Component Styles
+
+### Header
+```tsx
+<header className="border-b">
+  <nav className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    {/* nav items */}
+  </nav>
+</header>
+```
+
+### Footer
+```tsx
+<footer className="border-t mt-auto">
+  <div className="max-w-6xl mx-auto px-4 py-8">
+    {/* footer content */}
+  </div>
+</footer>
+```
+
+### Card
+```tsx
+<div className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+  {/* card content */}
+</div>
+```
+
+### Button Primary
+```tsx
+<button className="bg-black text-white px-4 py-2 rounded cursor-pointer transition-colors hover:bg-gray-800 disabled:opacity-50">
+```
+
+### Button Secondary
+```tsx
+<button className="border px-4 py-2 rounded cursor-pointer transition-colors hover:bg-gray-50">
+```
+
+### Form Input
+```tsx
+<input type="text" className="border px-3 py-2 rounded" />
+```
+
+### Modal Overlay
+```tsx
+<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+```
+
+### Table
+```tsx
+<table className="w-full border-collapse">
+  <thead><tr className="border-b"><th className="text-left py-2"></th></tr></thead>
+  <tbody>{rows.map(r => <tr key={r.id} className="border-b hover:bg-gray-50"><td className="py-3"></td></tr>)}</tbody>
+</table>
+```
+
+## Animation & Transitions
+
+- Hover transitions: `transition-colors`, `transition-shadow`
+- Spinner: `animate-spin h-8 w-8 border-4 border-black border-t-transparent rounded-full`
+- Scroll: `overflow-y-auto`
+- Fade (mobile nav): opacity transition on conditional render

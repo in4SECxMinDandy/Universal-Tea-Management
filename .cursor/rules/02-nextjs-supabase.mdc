@@ -1,0 +1,115 @@
+---
+description: Next.js 15 App Router + Supabase SSR patterns for this project
+globs: ["**/*.tsx", "**/*.ts"]
+alwaysApply: false
+---
+
+# Next.js 15 + Supabase Patterns
+
+## Server vs Client Components
+
+### Server Component (async, no hooks)
+```typescript
+import { createClient } from '@/lib/supabase/server'
+
+export default async function Page() {
+  const supabase = await createClient()
+  const { data } = await supabase.from('foods').select('*, category:food_categories(name)')
+  return <div>{/* render */}</div>
+}
+```
+
+### Client Component (hooks required)
+```typescript
+'use client'
+import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState } from 'react'
+
+export default function ClientPage() {
+  const [data, setData] = useState([])
+  const supabase = createClient()
+
+  useEffect(() => {
+    async function load() {
+      const { data } = await supabase.from('foods').select()
+      if (data) setData(data)
+    }
+    load()
+  }, [])
+
+  return <div>{/* render */}</div>
+}
+```
+
+## Route Groups & Layouts
+
+- Root layout: `src/app/layout.tsx` — includes Header + Footer
+- Route groups with layouts: `(group)/layout.tsx` — optional shared layout
+- Admin layout: `src/app/admin/layout.tsx` — wraps `/admin/*` with RoleGate
+
+## Data Fetching
+
+- Parallel fetches with `Promise.all`:
+```typescript
+const [{ data: categories }, { data: foods }] = await Promise.all([
+  supabase.from('food_categories').select('*'),
+  supabase.from('foods').select('*, category:food_categories(name)'),
+])
+```
+
+- Conditional fetch with `.eq()`, `.is()`, `.single()`:
+```typescript
+const { data } = await supabase
+  .from('foods')
+  .select('*, category:food_categories(name)')
+  .eq('is_available', true)
+  .is('deleted_at', null)  // soft delete filter
+  .limit(6)
+```
+
+## Type Casting for Supabase joins
+
+Supabase returns nested objects as `unknown`. Cast with `as unknown as Type`:
+```typescript
+const foods = data as unknown as Array<{
+  id: string
+  name: string
+  category: { name: string } | null
+}>
+```
+
+## Auth Flow
+
+1. Sign up: `supabase.auth.signUp({ email, password, options: { data: { full_name } } })`
+2. Sign in: `supabase.auth.signInWithPassword({ email, password })`
+3. Get user: `supabase.auth.getUser()` — always prefer over `getSession()`
+4. Middleware: `updateSession()` from `@supabase/ssr` keeps session fresh
+
+## Realtime Subscriptions
+
+```typescript
+const channel = supabase
+  .channel(`chat-${sessionId}`)
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'chat_messages',
+    filter: `session_id=eq.${sessionId}`,
+  }, (payload) => {
+    setMessages(prev => [...prev, payload.new])
+  })
+  .subscribe()
+
+// Cleanup
+return () => { supabase.removeChannel(channel) }
+```
+
+## Dynamic Routes
+
+Use async params in Next.js 15:
+```typescript
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  // ...
+}
+```
