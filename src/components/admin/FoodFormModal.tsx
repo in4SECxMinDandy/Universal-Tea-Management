@@ -148,7 +148,10 @@ export default function FoodFormModal({
             onChange={e => setFile(e.target.files?.[0] ?? null)}
             className="border px-3 py-2 rounded"
           />
-          {form.image_url && <img src={form.image_url} alt="preview" className="h-24 object-cover rounded" />}
+          {form.image_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={form.image_url} alt="preview" className="h-24 object-cover rounded" />
+          )}
           <div className="flex gap-2 mt-2">
             <button type="submit" disabled={loading} className="flex-1 bg-black text-white py-2 rounded cursor-pointer disabled:opacity-50 transition-colors hover:bg-gray-800">
               {loading ? 'Đang lưu...' : 'Lưu'}

@@ -31,6 +31,7 @@ export default function AdminFoodsPage() {
   useEffect(() => {
     loadFoods()
     loadCategories()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleDelete(id: string) {

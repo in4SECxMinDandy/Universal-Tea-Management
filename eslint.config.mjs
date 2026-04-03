@@ -1,13 +1,5 @@
-import nextPlugin from '@next/eslint-plugin-next'
+import nextConfig from 'eslint-config-next'
 
-const eslintConfig = [
-  {
-    name: 'next/core-web-vitals',
-    plugins: {
-      '@next/next': nextPlugin,
-    },
-    rules: nextPlugin.configs.recommended.rules,
-  },
-]
+const eslintConfig = [...nextConfig]
 
 export default eslintConfig
