@@ -99,23 +99,28 @@ function ChatContent() {
       setLoading(false)
     }
     init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const fetchMessages = async (sid: string) => {
+    const { data: msgs } = await supabase
+      .from('chat_messages')
+      .select()
+      .eq('session_id', sid)
+      .order('created_at', { ascending: true })
+    if (msgs) setMessages(msgs as unknown as Message[])
+  }
 
   useEffect(() => {
     if (!session?.id) return
-    const channel = supabase
-      .channel(`chat-${session.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages',
-        filter: `session_id=eq.${session.id}`,
-      }, (payload) => {
-        setMessages(prev => [...prev, payload.new as unknown as Message])
-      })
-      .subscribe()
+    
+    // Polling every 5 seconds (non-realtime with slight latency)
+    const interval = setInterval(() => {
+      fetchMessages(session.id)
+    }, 5000)
 
-    return () => { supabase.removeChannel(channel) }
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id])
 
   useEffect(() => { bottomRef.current?.scrollIntoView() }, [messages])
@@ -126,13 +131,18 @@ function ChatContent() {
     if (!user) return
 
     setSending(true)
-    await supabase.from('chat_messages').insert({
+    const { error } = await supabase.from('chat_messages').insert({
       session_id: session.id,
       sender_id: user.id,
       sender_role: 'USER',
       content: input.trim(),
     })
-    setInput('')
+    
+    if (!error) {
+      setInput('')
+      // Immediately refresh messages after sending
+      await fetchMessages(session.id)
+    }
     setSending(false)
   }
 
