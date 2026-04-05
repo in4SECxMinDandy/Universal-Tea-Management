@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { X, Upload, Loader2, CheckCircle2 } from 'lucide-react'
 import type { Category, Food } from '@/lib/types'
 
 function slugify(text: string): string {
@@ -27,6 +28,8 @@ export default function FoodFormModal({
   })
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(false)
+  const [saved, setSaved] = useState(false)
   const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,11 +39,13 @@ export default function FoodFormModal({
     let imageUrl = form.image_url
 
     if (file) {
+      setUploadProgress(true)
       const ext = file.name.split('.').pop()
       const path = `${Date.now()}.${ext}`
       const { error: uploadError } = await supabase.storage
         .from('food-images')
         .upload(path, file)
+      setUploadProgress(false)
       if (uploadError) {
         alert('Upload ảnh thất bại')
         setLoading(false)
@@ -74,89 +79,238 @@ export default function FoodFormModal({
     }
 
     setLoading(false)
-    onSaved()
+    setSaved(true)
+    setTimeout(() => {
+      onSaved()
+    }, 800)
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">{food ? 'Sửa món' : 'Thêm món'}</h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <input
-            type="text"
-            placeholder="Tên món"
-            value={form.name}
-            onChange={e => setForm({ ...form, name: e.target.value })}
-            className="border px-3 py-2 rounded"
-            required
-          />
-          <input
-            type="number"
-            placeholder="Giá (VNĐ)"
-            value={form.price}
-            onChange={e => setForm({ ...form, price: e.target.value })}
-            className="border px-3 py-2 rounded"
-            required
-            min="0"
-          />
-          <select
-            value={form.category_id}
-            onChange={e => setForm({ ...form, category_id: e.target.value })}
-            className="border px-3 py-2 rounded"
+    <div
+      className="fixed inset-0 bg-primary/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-surface-card rounded-2xl shadow-modal w-full max-w-lg max-h-[90vh] overflow-hidden animate-scale-in">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
+          <div>
+            <h2 className="text-lg font-bold text-primary">
+              {food ? 'Sửa món' : 'Thêm món mới'}
+            </h2>
+            <p className="text-xs text-text-muted mt-0.5">
+              {food ? 'Cập nhật thông tin món ăn' : 'Điền thông tin để thêm món mới'}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors duration-150 text-text-secondary hover:text-primary"
+            aria-label="Đóng"
           >
-            <option value="">-- Chọn danh mục --</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <textarea
-            placeholder="Mô tả"
-            value={form.description}
-            onChange={e => setForm({ ...form, description: e.target.value })}
-            className="border px-3 py-2 rounded"
-            rows={3}
-          />
-          <input
-            type="number"
-            placeholder="Số lượng tồn kho"
-            value={form.stock_quantity}
-            onChange={e => setForm({ ...form, stock_quantity: parseInt(e.target.value) || 0 })}
-            className="border px-3 py-2 rounded"
-            min="0"
-          />
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.is_available}
-                onChange={e => setForm({ ...form, is_available: e.target.checked })}
-              />
-              Đang bán
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+          {/* Name */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-primary">Tên món <span className="text-accent-red">*</span></label>
+            <input
+              type="text"
+              placeholder="VD: Cơm gà xối mỡ"
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+              className="input-field"
+              required
+            />
+          </div>
+
+          {/* Price */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-primary">Giá (VNĐ) <span className="text-accent-red">*</span></label>
+            <input
+              type="number"
+              placeholder="VD: 45000"
+              value={form.price}
+              onChange={e => setForm({ ...form, price: e.target.value })}
+              className="input-field"
+              required
+              min="0"
+            />
+          </div>
+
+          {/* Category */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-primary">Danh mục</label>
+            <select
+              value={form.category_id}
+              onChange={e => setForm({ ...form, category_id: e.target.value })}
+              className="input-field"
+            >
+              <option value="">-- Chọn danh mục --</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-primary">Mô tả</label>
+            <textarea
+              placeholder="Mô tả ngắn về món ăn..."
+              value={form.description}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              className="input-field resize-none"
+              rows={3}
+            />
+          </div>
+
+          {/* Stock */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-primary">Số lượng tồn kho</label>
+            <input
+              type="number"
+              placeholder="VD: 50"
+              value={form.stock_quantity}
+              onChange={e => setForm({ ...form, stock_quantity: parseInt(e.target.value) || 0 })}
+              className="input-field"
+              min="0"
+            />
+          </div>
+
+          {/* Toggle switches */}
+          <div className="flex gap-6">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={form.is_available}
+                  onChange={e => setForm({ ...form, is_available: e.target.checked })}
+                  className="sr-only"
+                />
+                <div className={`
+                  w-10 h-6 rounded-full transition-colors duration-200
+                  ${form.is_available ? 'bg-accent-green' : 'bg-gray-200'}
+                `} />
+                <div className={`
+                  absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
+                  ${form.is_available ? 'translate-x-4' : 'translate-x-0'}
+                `} />
+              </div>
+              <span className="text-sm font-medium text-primary group-hover:text-primary-dark transition-colors">
+                Đang bán
+              </span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.is_featured}
-                onChange={e => setForm({ ...form, is_featured: e.target.checked })}
-              />
-              Nổi bật
+
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={form.is_featured}
+                  onChange={e => setForm({ ...form, is_featured: e.target.checked })}
+                  className="sr-only"
+                />
+                <div className={`
+                  w-10 h-6 rounded-full transition-colors duration-200
+                  ${form.is_featured ? 'bg-accent-amber' : 'bg-gray-200'}
+                `} />
+                <div className={`
+                  absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200
+                  ${form.is_featured ? 'translate-x-4' : 'translate-x-0'}
+                `} />
+              </div>
+              <span className="text-sm font-medium text-primary group-hover:text-primary-dark transition-colors">
+                Nổi bật
+              </span>
             </label>
           </div>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => setFile(e.target.files?.[0] ?? null)}
-            className="border px-3 py-2 rounded"
-          />
-          {form.image_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={form.image_url} alt="preview" className="h-24 object-cover rounded" />
+
+          {/* Image upload */}
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-primary">Hình ảnh</label>
+            <label
+              htmlFor="food-image-upload"
+              className={`
+                flex flex-col items-center justify-center gap-2 w-full h-32
+                border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200
+                ${file ? 'border-accent-green bg-accent-green-light/30' : 'border-border-subtle hover:border-primary hover:bg-gray-50'}
+              `}
+            >
+              {file ? (
+                <>
+                  <CheckCircle2 size={24} className="text-accent-green" />
+                  <span className="text-sm font-medium text-accent-green">{file.name}</span>
+                </>
+              ) : (
+                <>
+                  <Upload size={24} className="text-text-muted" />
+                  <span className="text-sm text-text-muted">
+                    {form.image_url ? 'Thay đổi ảnh...' : 'Tải ảnh lên'}
+                  </span>
+                </>
+              )}
+              <input
+                id="food-image-upload"
+                type="file"
+                accept="image/*"
+                onChange={e => setFile(e.target.files?.[0] ?? null)}
+                className="sr-only"
+              />
+            </label>
+          </div>
+
+          {/* Preview */}
+          {(form.image_url || file) && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-primary">Xem trước</label>
+              {file ? (
+                <div className="relative h-32 rounded-xl overflow-hidden bg-gray-100">
+                  <img
+                    src={URL.createObjectURL(file)}
+                    alt="preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="relative h-32 rounded-xl overflow-hidden bg-gray-100">
+                  <img
+                    src={form.image_url}
+                    alt="preview"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+            </div>
           )}
-          <div className="flex gap-2 mt-2">
-            <button type="submit" disabled={loading} className="flex-1 bg-black text-white py-2 rounded cursor-pointer disabled:opacity-50 transition-colors hover:bg-gray-800">
-              {loading ? 'Đang lưu...' : 'Lưu'}
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-2 border-t border-border-subtle">
+            <button
+              type="submit"
+              disabled={loading || !form.name || !form.price}
+              className="btn-primary flex-1 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  {uploadProgress ? 'Đang tải ảnh...' : 'Đang lưu...'}
+                </>
+              ) : saved ? (
+                <>
+                  <CheckCircle2 size={16} />
+                  Đã lưu!
+                </>
+              ) : (
+                food ? 'Cập nhật' : 'Thêm món'
+              )}
             </button>
-            <button type="button" onClick={onClose} className="px-4 py-2 border rounded cursor-pointer transition-colors hover:bg-gray-50">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="btn-secondary flex-1"
+            >
               Huỷ
             </button>
           </div>
