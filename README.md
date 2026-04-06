@@ -127,3 +127,5 @@ Truy cập hệ thống ở [http://localhost:3000](http://localhost:3000).
 ## 📝 Giấy phép
 
 Được triển khai độc quyền dưới tư cách dự án nội bộ. Vui lòng liên hệ nhóm phát triển trước khi sao chép và thương mại hoá. Thay đổi và phát triển bởi [in4SECxMinDandy].
+#   U n i v e r s a l - T e a - M a n a g e m e n t  
+ 
