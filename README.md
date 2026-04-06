@@ -1,12 +1,10 @@
 # Universal-Tea-Management
 
-<div align="center">
-  <img src="https://cmstest.lottemallwestlakehanoi.vn/storage/tenants/195/727909eb2bc36eb272c37e21458677a184601520.png" alt="UniTEA Logo" width="120" height="120" />
+![UniTEA Logo](https://cmstest.lottemallwestlakehanoi.vn/storage/tenants/195/727909eb2bc36eb272c37e21458677a184601520.png)
 
-  # UniTEA - Nền tảng Nâng Tầm Trải Nghiệm Khách Hàng F&B
+## UniTEA - Nền tảng Nâng Tầm Trải Nghiệm Khách Hàng F&B
 
-  Giải pháp tối ưu hóa thao tác gọi món, phản hồi và chăm sóc khách hàng dựa trên QR Code, dành riêng cho các mô hình cà phê, trà sữa, và nhà hàng cỡ vừa và nhỏ.
-</div>
+Giải pháp tối ưu hóa thao tác gọi món, phản hồi và chăm sóc khách hàng dựa trên QR Code, dành riêng cho các mô hình cà phê, trà sữa, và nhà hàng cỡ vừa và nhỏ.
 
 ## 🎯 Tầm nhìn dự án
 
