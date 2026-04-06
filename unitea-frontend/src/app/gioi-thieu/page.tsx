@@ -1,7 +1,7 @@
 import { Heart, Award, Truck, Leaf, Star, Users, Clock } from 'lucide-react'
 
 const milestones = [
-  { year: '2021', title: 'Khởi đầu', desc: 'UniTEA ra đời tại Sài Gòn với cửa hàng đầu tiên' },
+  { year: '2021', title: 'Khởi đầu', desc: 'universaltea ra đời tại Sài Gòn với cửa hàng đầu tiên' },
   { year: '2022', title: 'Mở rộng', desc: 'Thêm dòng bánh ngọt cao cấp và mở chi nhánh thứ 2' },
   { year: '2023', title: 'Công nghệ', desc: 'Ra mắt hệ thống đặt hàng trực tuyến thông minh' },
   { year: '2024', title: 'Khẳng định', desc: 'Đạt 3000+ khách hàng thân thiết, đánh giá 4.9 sao' },
@@ -48,7 +48,7 @@ export default function AboutPage() {
         <div className="relative page-container text-center">
           <div className="gold-line mx-auto mb-8" />
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-display font-bold text-white tracking-tight mb-6 animate-fade-in-up">
-            Câu Chuyện <span className="gold-gradient-text">UniTEA</span>
+            Câu Chuyện <span className="gold-gradient-text">universaltea</span>
           </h1>
           <p className="text-lg text-white/50 max-w-2xl mx-auto text-balance animate-fade-in-up animate-stagger-1 font-light">
             Nơi nghệ thuật pha trà gặp gỡ tinh hoa bánh ngọt,
@@ -62,7 +62,7 @@ export default function AboutPage() {
           <div className="gold-line mx-auto mb-6" />
           <h2 className="section-heading mb-6">Triết Lý Của Chúng Tôi</h2>
           <p className="text-text-secondary leading-relaxed text-lg">
-            UniTEA được sinh ra từ niềm đam mê mãnh liệt với trà và bánh ngọt.
+            universaltea được sinh ra từ niềm đam mê mãnh liệt với trà và bánh ngọt.
             Chúng tôi tin rằng mỗi ly trà sữa, mỗi chiếc bánh không chỉ đơn giản
             là thức uống hay món ăn — đó là những trải nghiệm đáng nhớ, những khoảnh khắc
             ngọt ngào được tạo nên bằng sự tận tâm và chất lượng không thỏa hiệp.
@@ -147,7 +147,7 @@ export default function AboutPage() {
               Sẵn Sàng Trải Nghiệm?
             </h2>
             <p className="text-white/50 mb-8 max-w-md mx-auto">
-              Khám phá thực đơn phong phú của UniTEA ngay hôm nay
+              Khám phá thực đơn phong phú của universaltea ngay hôm nay
             </p>
             <a
               href="/thuc-pham"

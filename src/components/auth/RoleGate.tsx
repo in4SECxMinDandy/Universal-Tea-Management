@@ -11,7 +11,9 @@ export function RoleGate({ role, children }: { role: string; children: React.Rea
 
   useEffect(() => {
     async function check() {
-      const { data: { user } } = await supabase.auth.getUser()
+      // Dùng getSession trên client thay vì getUser để tránh gọi API network không cần thiết gây lag
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) { router.push('/login'); return }
 
       const { data } = await supabase.rpc('has_role', { uid: user.id, role_name: role })
@@ -54,7 +56,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     async function check() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       setIsAuthenticated(!!user)
       if (!user) router.push('/login')
     }

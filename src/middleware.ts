@@ -31,7 +31,12 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  // Bỏ qua kiểm tra auth trên các request prefetch của Next.js (cải thiện tốc độ chuyển trang đáng kể)
+  if (request.headers.get('purpose') === 'prefetch' || request.headers.get('x-middleware-prefetch') === '1') {
+    return supabaseResponse
+  }
+
+  // Cập nhật session an toàn thông qua getSession() để cookie được refresh
   await supabase.auth.getSession()
 
   return supabaseResponse

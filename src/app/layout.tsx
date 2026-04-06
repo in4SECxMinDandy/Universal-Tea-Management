@@ -5,14 +5,15 @@ import Footer from '@/components/layout/Footer'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'UniTEA — Trà Sữa & Bánh Ngọt Cao Cấp',
+  title: 'universaltea — Trà Sữa & Bánh Ngọt Cao Cấp',
   description: 'Thưởng thức trà sữa thượng hạng và bánh ngọt tinh tế, giao tận nơi',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user || null
+
   let isAdmin = false
   if (user) {
     const { data } = await supabase.rpc('has_role', { uid: user.id, role_name: 'STORE_ADMIN' })

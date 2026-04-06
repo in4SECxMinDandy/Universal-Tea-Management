@@ -12,7 +12,7 @@ export default function Footer() {
                 <span className="text-white font-display font-bold text-sm">U</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-lg font-display font-bold text-white leading-tight">UniTEA</span>
+                <span className="text-lg font-display font-bold text-white leading-tight">universaltea</span>
                 <span className="text-[9px] uppercase tracking-[0.2em] text-gold font-medium leading-tight">Tea & Bakery</span>
               </div>
             </div>
@@ -65,7 +65,7 @@ export default function Footer() {
 
         <div className="border-t border-white/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-white/30">
-            &copy; {new Date().getFullYear()} UniTEA. All rights reserved.
+            &copy; {new Date().getFullYear()} universaltea. All rights reserved.
           </p>
           <p className="text-xs text-white/30 font-display italic">
             Crafted with passion for tea & pastry lovers

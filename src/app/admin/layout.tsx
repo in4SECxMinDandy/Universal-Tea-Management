@@ -29,7 +29,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     async function loadUser() {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const authUser = session?.user
       if (!authUser) return
       // profiles table does not have an email column — use auth.email instead
       const { data: profile } = await supabase

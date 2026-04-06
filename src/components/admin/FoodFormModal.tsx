@@ -73,8 +73,8 @@ export default function FoodFormModal({
       const { error } = await supabase.from('foods').update(payload).eq('id', food.id)
       if (error) alert(error.message)
     } else {
-      const { data: { user } } = await supabase.auth.getUser()
-      const { error } = await supabase.from('foods').insert({ ...payload, created_by: user?.id })
+      const { data: { session } } = await supabase.auth.getSession()
+      const { error } = await supabase.from('foods').insert({ ...payload, created_by: session?.user?.id })
       if (error) alert(error.message)
     }
 

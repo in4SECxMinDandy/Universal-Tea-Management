@@ -102,7 +102,7 @@ export default function LoginPage() {
         if (error) throw error
         const params = new URLSearchParams(window.location.search)
         const redirect = params.get('redirect')
-        window.location.href = redirect ? `/${redirect}` : '/'
+        window.location.href = redirect ? `/${redirect}` : '/home'
       }
     } catch (err: unknown) {
       const msg = formatAuthFailureMessage(err)
@@ -158,7 +158,7 @@ export default function LoginPage() {
                 </h1>
                 <p className="text-sm text-text-muted mt-1">
                   {isRegister
-                    ? 'Đăng ký để trải nghiệm dịch vụ UniTEA'
+                    ? 'Đăng ký để trải nghiệm dịch vụ universaltea'
                     : 'Đăng nhập để tiếp tục thưởng thức'}
                 </p>
               </div>
@@ -286,8 +286,8 @@ export default function LoginPage() {
         </p>
 
         <div className="mt-8 flex justify-center">
-          <a 
-            href="/adminlogin" 
+          <a
+            href="/adminlogin"
             className="text-[11px] font-medium text-text-muted hover:text-gold flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-gold/5 transition-all duration-300"
           >
             <span>Dành cho nhân viên cửa hàng</span>

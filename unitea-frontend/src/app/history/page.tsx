@@ -39,17 +39,17 @@ export default function OrderHistoryPage() {
         router.push('/login?redirect=history')
         return
       }
-      
+
       doFetch()
 
       channel = supabase.channel(`user-orders-history-${session.user.id}-${Date.now()}`)
-        .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${session.user.id}` }, 
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${session.user.id}` },
           () => { doFetch() }
         )
         .subscribe()
     }
-    
+
     async function doFetch() {
       setLoading(true)
       const { data } = await supabase
@@ -102,7 +102,7 @@ export default function OrderHistoryPage() {
               <Search size={24} className="text-text-muted" />
             </div>
             <h3 className="text-xl font-display font-bold text-primary">Chưa có đơn hàng nào</h3>
-            <p className="text-text-muted mt-1 mb-6">Bạn chưa đặt món nào tại UniTEA.</p>
+            <p className="text-text-muted mt-1 mb-6">Bạn chưa đặt món nào tại universaltea.</p>
             <Link href="/thuc-pham" className="btn-primary rounded-full">
               Khám phá thực đơn
             </Link>
@@ -128,19 +128,19 @@ export default function OrderHistoryPage() {
                     {formatTime(order.created_at)}
                   </span>
                 </div>
-                
+
                 <div>
                   <h3 className="text-xl font-display font-bold text-primary">
                     {order.quantity}x {order.food?.name || 'Món đã bị xóa'}
                   </h3>
                   <div className="text-sm text-text-secondary mt-1">
-                     Tổng tiền: <span className="font-display font-bold text-gold text-base ml-1">{formatPrice(order.total_price)}</span>
+                    Tổng tiền: <span className="font-display font-bold text-gold text-base ml-1">{formatPrice(order.total_price)}</span>
                   </div>
                 </div>
 
                 {order.note && (
                   <div className="text-sm text-text-muted italic mt-2">
-                    <span className="not-italic text-text-secondary font-medium mr-1">Ghi chú:</span> 
+                    <span className="not-italic text-text-secondary font-medium mr-1">Ghi chú:</span>
                     {order.note}
                   </div>
                 )}
@@ -148,7 +148,7 @@ export default function OrderHistoryPage() {
 
               <div className="w-full md:w-auto flex justify-between md:flex-col items-center md:items-end gap-3 p-4 md:p-0 bg-cream md:bg-transparent rounded-xl md:rounded-none border md:border-none border-border-subtle border-dashed">
                 {getStatusBadge(order.status)}
-                
+
                 {order.status === 'pending' && (
                   <p className="text-xs text-text-muted text-right max-w-[150px]">
                     Đơn hàng sẽ sớm được xác nhận.

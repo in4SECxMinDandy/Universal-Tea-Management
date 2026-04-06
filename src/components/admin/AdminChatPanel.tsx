@@ -125,7 +125,8 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
 
   async function sendMessage() {
     if ((!input.trim() && !imageFile) || sending) return
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user || null
     if (!user) return
 
     setSending(true)

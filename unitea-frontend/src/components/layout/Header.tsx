@@ -33,7 +33,7 @@ export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boo
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-display font-bold text-primary tracking-tight leading-tight">
-                UniTEA
+                universaltea
               </span>
               <span className="text-[9px] uppercase tracking-[0.2em] text-gold font-medium leading-tight">
                 Tea & Bakery

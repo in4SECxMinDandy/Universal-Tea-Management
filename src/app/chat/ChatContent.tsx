@@ -22,7 +22,7 @@ interface ChatSession {
   guest_name: string | null
 }
 
-const SESSION_STORAGE_KEY = 'unitea_chat_session_id'
+const SESSION_STORAGE_KEY = 'universaltea_chat_session_id'
 
 function ChatContent() {
   const [session, setSession] = useState<ChatSession | null>(null)
@@ -51,12 +51,13 @@ function ChatContent() {
       .eq('session_id', sid)
       .order('created_at', { ascending: true })
     if (msgs) setMessages(msgs as unknown as Message[])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
     async function init() {
-      let { data: { user } } = await supabase.auth.getUser()
+      let { data: { session } } = await supabase.auth.getSession()
+      let user = session?.user || null
 
       if (!user) {
         const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
@@ -287,7 +288,8 @@ function ChatContent() {
 
   async function sendMessage() {
     if ((!input.trim() && !imageFile) || !session || sending) return
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session: authSession } } = await supabase.auth.getSession()
+    const user = authSession?.user || null
     if (!user) return
 
     setSending(true)

@@ -144,7 +144,7 @@ export default async function HomePage() {
               href="/gioi-thieu"
               className="btn-secondary inline-flex items-center gap-2 text-base rounded-full px-8 py-4 border-gold/30 text-gold/80 hover:bg-gold hover:text-white"
             >
-              Về UniTEA
+              Về universaltea
             </Link>
           </div>
 
@@ -168,7 +168,7 @@ export default async function HomePage() {
           <div className="gold-line mx-auto mb-6" />
           <h2 className="section-heading mb-3">Tinh Hoa Từ Chúng Tôi</h2>
           <p className="section-subheading max-w-xl mx-auto">
-            Ba giá trị cốt lõi tạo nên thương hiệu UniTEA
+            Ba giá trị cốt lõi tạo nên thương hiệu universaltea
           </p>
         </div>
 
@@ -193,7 +193,7 @@ export default async function HomePage() {
             <div>
               <div className="gold-line mb-4" />
               <h2 className="section-heading">Được Yêu Thích</h2>
-              <p className="section-subheading">Những món đặc trưng của UniTEA</p>
+              <p className="section-subheading">Những món đặc trưng của universaltea</p>
             </div>
             <Link
               href="/thuc-pham"
