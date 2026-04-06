@@ -18,7 +18,8 @@ export function RoleGate({ role, children }: { role: string; children: React.Rea
       setHasRole(data === true)
     }
     check()
-  }, [supabase, router, role])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (hasRole === null) {
     return (
@@ -58,7 +59,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       if (!user) router.push('/login')
     }
     check()
-  }, [supabase, router])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (isAuthenticated === null) {
     return (
