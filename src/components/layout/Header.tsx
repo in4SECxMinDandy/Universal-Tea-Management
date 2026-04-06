@@ -42,7 +42,7 @@ export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boo
 
           {/* Desktop nav */}
           <ul className="hidden md:flex items-center gap-1">
-            {navLinks.map((link, idx) => {
+            {navLinks.filter(link => !isAdmin || link.href !== '/thuc-pham').map((link, idx) => {
               const isActive = pathname === link.href
               return (
                 <li key={link.href}>
@@ -121,14 +121,16 @@ export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boo
                         </>
                       )}
                       
-                      <Link
-                        href="/history"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-primary hover:bg-gray-50 cursor-pointer transition-colors duration-150"
-                      >
-                        <ShoppingBag size={14} />
-                        <span>Đơn hàng của tôi</span>
-                      </Link>
+                      {!isAdmin && (
+                        <Link
+                          href="/history"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-primary hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                        >
+                          <ShoppingBag size={14} />
+                          <span>Đơn hàng của tôi</span>
+                        </Link>
+                      )}
                       
                       <div className="border-t border-border-subtle my-1" />
                       
@@ -174,7 +176,7 @@ export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boo
         `}
       >
         <div className="border-t border-border-subtle px-4 py-4 space-y-1">
-          {navLinks.map((link) => {
+          {navLinks.filter(link => !isAdmin || link.href !== '/thuc-pham').map((link) => {
             const isActive = pathname === link.href
             return (
               <Link
@@ -231,14 +233,16 @@ export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boo
                   </Link>
                 )}
                 
-                <Link
-                  href="/history"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-primary hover:bg-gray-50 cursor-pointer transition-colors duration-150"
-                >
-                  <ShoppingBag size={16} />
-                  <span>Đơn hàng của tôi</span>
-                </Link>
+                {!isAdmin && (
+                  <Link
+                    href="/history"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:text-primary hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                  >
+                    <ShoppingBag size={16} />
+                    <span>Đơn hàng của tôi</span>
+                  </Link>
+                )}
 
                 <button
                   onClick={() => { setMobileOpen(false); handleLogout() }}

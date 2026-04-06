@@ -40,6 +40,7 @@ function ChatContent() {
   const [guestNameInput, setGuestNameInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const prevMsgCountRef = useRef(0)
   // Keep a ref to current session id to avoid stale closure in realtime handler
   const sessionIdRef = useRef<string | null>(null)
   const searchParams = useSearchParams()
@@ -262,7 +263,12 @@ function ChatContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, fetchMessages])
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+    prevMsgCountRef.current = messages.length
+  }, [messages])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

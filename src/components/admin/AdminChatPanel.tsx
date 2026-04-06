@@ -31,6 +31,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
   const [uploadProgress, setUploadProgress] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const prevMsgCountRef = useRef(0)
   const supabase = createClient()
 
   // Stable fetch function to avoid stale closures in realtime handler
@@ -71,7 +72,14 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
   }, [fetchMessages])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    prevMsgCountRef.current = 0
+  }, [sessionId])
+
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+    prevMsgCountRef.current = messages.length
   }, [messages])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
