@@ -29,9 +29,10 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const prevMsgCountRef = useRef(0)
+  const isFirstLoadRef = useRef(true)
   const supabase = createClient()
 
   // Stable fetch function to avoid stale closures in realtime handler
@@ -73,11 +74,21 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
 
   useEffect(() => {
     prevMsgCountRef.current = 0
+    isFirstLoadRef.current = true
   }, [sessionId])
 
   useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
     if (messages.length > prevMsgCountRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+      if (isFirstLoadRef.current) {
+        // Instantly jump to bottom when first opening a session
+        container.scrollTop = container.scrollHeight
+        isFirstLoadRef.current = false
+      } else {
+        // Smoothly scroll for genuinely new messages
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
+      }
     }
     prevMsgCountRef.current = messages.length
   }, [messages])
@@ -205,7 +216,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-3 bg-gray-50/50">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-5 flex flex-col gap-3 bg-gray-50/50">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <p className="text-sm font-medium text-primary mb-1">Chưa có tin nhắn</p>
@@ -260,7 +271,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
             </div>
           )
         })}
-        <div ref={bottomRef} />
+        <div />
       </div>
 
       {/* Image Preview */}

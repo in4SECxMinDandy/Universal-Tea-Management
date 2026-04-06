@@ -83,7 +83,7 @@ export default function LoginPage() {
 
     try {
       if (isRegister) {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: emailTrimmed,
           password,
           options: {
@@ -92,7 +92,29 @@ export default function LoginPage() {
           },
         })
         if (error) throw error
-        setRegistered(true)
+        
+        if (data.session) {
+          // Mặc định đăng nhập luôn nếu không bắt confirm email
+          const params = new URLSearchParams(window.location.search)
+          const redirect = params.get('redirect')
+          window.location.href = redirect ? `/${redirect}` : '/home'
+        } else {
+          // Fallback signIn (nếu cần mồi thêm)
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: emailTrimmed,
+            password,
+            ...(captchaToken ? { options: { captchaToken } } : {}),
+          })
+          
+          if (!signInError && signInData.session) {
+            const params = new URLSearchParams(window.location.search)
+            const redirect = params.get('redirect')
+            window.location.href = redirect ? `/${redirect}` : '/home'
+          } else {
+            // Vẫn bị chặn => bắt buộc hiển thị màn hình báo check email
+            setRegistered(true)
+          }
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email: emailTrimmed,
@@ -138,7 +160,7 @@ export default function LoginPage() {
                 >
                   Đăng nhập ngay
                 </button>
-                <a href="/" className="btn-secondary w-full block text-center rounded-full">
+                <a href="/home" className="btn-secondary w-full block text-center rounded-full">
                   Quay lại trang chủ
                 </a>
               </div>

@@ -103,7 +103,7 @@ export default async function FoodsPage(props: PageProps) {
             <div className="text-5xl mb-6">🍵</div>
             <h3 className="text-xl font-display font-bold text-primary mb-2">Chưa có món nào</h3>
             <p className="text-sm text-text-muted mb-6">Thực đơn đang được cập nhật, vui lòng quay lại sau.</p>
-            <Link href="/" className="btn-secondary text-sm rounded-full px-6">
+            <Link href="/home" className="btn-secondary text-sm rounded-full px-6">
               Quay lại trang chủ
             </Link>
           </div>

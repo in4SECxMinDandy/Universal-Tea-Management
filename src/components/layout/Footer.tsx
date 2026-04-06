@@ -29,7 +29,7 @@ export default function Footer() {
             </h4>
             <nav className="flex flex-col gap-3">
               {[
-                { href: '/', label: 'Trang chủ' },
+                { href: '/home', label: 'Trang chủ' },
                 { href: '/gioi-thieu', label: 'Câu chuyện thương hiệu' },
                 { href: '/thuc-pham', label: 'Thực đơn' },
                 { href: '/login', label: 'Đăng nhập' },

@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Menu, X, MessageCircle, Settings, LogOut, ChevronDown, ShoppingBag } from 'lucide-react'
 
 const navLinks = [
-  { href: '/', label: 'Trang chủ' },
+  { href: '/home', label: 'Trang chủ' },
   { href: '/gioi-thieu', label: 'Giới thiệu' },
   { href: '/thuc-pham', label: 'Thực đơn' },
 ]
@@ -20,14 +20,14 @@ export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boo
 
   async function handleLogout() {
     await supabase.auth.signOut()
-    window.location.href = '/'
+    window.location.href = '/home'
   }
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-border-subtle/50 transition-all duration-500">
       <nav className="page-container">
         <div className="flex items-center justify-between h-[72px]">
-          <Link href="/" className="flex items-center gap-3 cursor-pointer group">
+          <Link href="/home" className="flex items-center gap-3 cursor-pointer group">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center transition-all duration-300 group-hover:shadow-gold-glow">
               <span className="text-white font-display font-bold text-sm">U</span>
             </div>
@@ -118,14 +118,16 @@ export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boo
                           <div className="border-t border-border-subtle my-1" />
                         </>
                       )}
-                      <Link
-                        href="/history"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-gold hover:bg-gold/5 cursor-pointer transition-colors duration-200"
-                      >
-                        <ShoppingBag size={14} />
-                        <span>Đơn hàng của tôi</span>
-                      </Link>
+                      {!isAdmin && (
+                        <Link
+                          href="/history"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-text-secondary hover:text-gold hover:bg-gold/5 cursor-pointer transition-colors duration-200"
+                        >
+                          <ShoppingBag size={14} />
+                          <span>Đơn hàng của tôi</span>
+                        </Link>
+                      )}
                       <div className="border-t border-border-subtle my-1" />
                       <button
                         onClick={handleLogout}
@@ -223,14 +225,16 @@ export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boo
                     <span>Quản trị</span>
                   </Link>
                 )}
-                <Link
-                  href="/history"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:text-gold hover:bg-gold/5 cursor-pointer transition-colors duration-200"
-                >
-                  <ShoppingBag size={16} />
-                  <span>Đơn hàng của tôi</span>
-                </Link>
+                {!isAdmin && (
+                  <Link
+                    href="/history"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-text-secondary hover:text-gold hover:bg-gold/5 cursor-pointer transition-colors duration-200"
+                  >
+                    <ShoppingBag size={16} />
+                    <span>Đơn hàng của tôi</span>
+                  </Link>
+                )}
                 <button
                   onClick={() => { setMobileOpen(false); handleLogout() }}
                   className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-accent-red hover:bg-accent-red-light/30 cursor-pointer transition-colors duration-200 w-full text-left"

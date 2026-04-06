@@ -23,11 +23,12 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ slu
   }
 
   const { data: { session } } = await supabase.auth.getSession()
+  const isAdmin = session?.user?.user_metadata?.role === 'admin'
 
   return (
     <div className="page-container py-12 sm:py-16">
       <nav className="flex items-center gap-2 text-sm text-text-muted mb-8" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-gold cursor-pointer transition-colors duration-200">
+        <Link href="/home" className="hover:text-gold cursor-pointer transition-colors duration-200">
           Trang chủ
         </Link>
         <span className="text-gold/30">/</span>
@@ -117,7 +118,9 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ slu
             foodId={food.id} 
             price={food.price} 
             isAvailable={food.is_available} 
+            stockQuantity={food.stock_quantity}
             userId={session?.user?.id || null} 
+            isAdmin={isAdmin}
           />
 
           <Link

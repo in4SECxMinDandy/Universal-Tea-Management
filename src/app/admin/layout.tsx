@@ -173,7 +173,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
 
             <Link
-              href="/"
+              href="/home"
               className="flex items-center gap-2 text-xs text-text-muted hover:text-primary cursor-pointer transition-colors duration-150 px-3"
             >
               ← Quay lại cửa hàng

@@ -38,7 +38,7 @@ export default function Error({ error, reset }: ErrorProps) {
           <RefreshCw size={16} />
           <span>Thử lại</span>
         </button>
-        <Link href="/" className="btn-secondary inline-flex items-center gap-2 rounded-full">
+        <Link href="/home" className="btn-secondary inline-flex items-center gap-2 rounded-full">
           <Home size={16} />
           <span>Trang chủ</span>
         </Link>

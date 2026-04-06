@@ -39,6 +39,7 @@ function ChatContent() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const sessionIdRef = useRef<string | null>(null)
+  const prevMessageCountRef = useRef<number>(0)
   const searchParams = useSearchParams()
   const supabase = createClient()
 
@@ -242,7 +243,12 @@ function ChatContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, fetchMessages])
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => {
+    if (messages.length > prevMessageCountRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+    prevMessageCountRef.current = messages.length
+  }, [messages])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -350,7 +356,7 @@ function ChatContent() {
         <p className="text-sm text-text-muted max-w-sm mb-6">
           Mã QR này không còn hiệu lực hoặc đã hết hạn. Vui lòng yêu cầu nhân viên tạo mã mới.
         </p>
-        <a href="/" className="btn-secondary text-sm">Quay lại trang chủ</a>
+        <a href="/home" className="btn-secondary text-sm">Quay lại trang chủ</a>
       </div>
     )
   }
@@ -365,7 +371,7 @@ function ChatContent() {
         <p className="text-sm text-text-muted max-w-sm mb-6">
           Vui lòng quét mã QR tại bàn để bắt đầu trò chuyện với nhân viên.
         </p>
-        <a href="/" className="btn-secondary text-sm">Quay lại trang chủ</a>
+        <a href="/home" className="btn-secondary text-sm">Quay lại trang chủ</a>
       </div>
     )
   }
