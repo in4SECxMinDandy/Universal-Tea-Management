@@ -6,15 +6,6 @@ import { useRouter } from 'next/navigation'
 import { LogIn, UserPlus, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react'
 import { TurnstileBox } from '@/components/auth/TurnstileBox'
 
-// #region agent debug
-const LOG = (h: string, m: string, d: unknown) =>
-  fetch('/api/debug/log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sessionId: '6649c4', location: 'login/page.tsx', message: m, data: d, runId: 'hypothesis-test', hypothesisId: h, timestamp: Date.now() }),
-  }).catch(() => {})
-// #endregion
-
 const SUPABASE_CONFIG_ERROR_VI =
   'Chưa cấu hình Supabase: mở file .env.local và đặt NEXT_PUBLIC_SUPABASE_URL (Project URL) cùng NEXT_PUBLIC_SUPABASE_ANON_KEY (anon public key) từ Supabase Dashboard → Settings → API. Sau đó khởi động lại dev server.'
 
@@ -68,14 +59,6 @@ export default function LoginPage() {
     setCaptchaToken(t)
   }, [])
 
-  // #region agent debug
-  useEffect(() => {
-    LOG('H3', 'ENV_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL)
-    LOG('H3', 'ENV_SUPABASE_KEY_PREFIX', (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? 'MISSING').substring(0, 20))
-    LOG('H3', 'TURNSTILE_CONFIGURED', !!TURNSTILE_SITE_KEY)
-  }, [])
-  // #endregion
-
   const captchaRequired = Boolean(TURNSTILE_SITE_KEY)
   const captchaOk = !captchaRequired || Boolean(captchaToken)
 
@@ -86,40 +69,7 @@ export default function LoginPage() {
 
     const emailTrimmed = email.trim()
 
-    // #region agent debug: probe raw auth endpoint
-    LOG('H5', 'AUTH_PROBE_REQUEST', { emailLen: emailTrimmed.length, hasCaptcha: !!captchaToken })
-    ;(async () => {
-      try {
-        const body = JSON.stringify({ email: emailTrimmed, password, ...(captchaToken ? { captcha_token: captchaToken } : {}) })
-        const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          },
-          body,
-        })
-        const text = await res.text()
-        LOG('H5', 'AUTH_PROBE_RESPONSE', {
-          status: res.status,
-          statusText: res.statusText,
-          body: text.substring(0, 500),
-        })
-      } catch (e) {
-        LOG('H5', 'AUTH_PROBE_ERROR', { msg: e instanceof Error ? e.message : String(e) })
-      }
-    })()
-    // #endregion
-
-    // #region agent debug
-    LOG('H1', 'handleSubmit_ENTER', { isRegister, url: process.env.NEXT_PUBLIC_SUPABASE_URL, emailLen: emailTrimmed.length })
-    // #endregion
-
     if (isSupabaseEnvPlaceholder()) {
-      // #region agent debug
-      LOG('H1', 'BLOCKED_PLACEHOLDER_ENV', { blocked: true })
-      // #endregion
       setError(SUPABASE_CONFIG_ERROR_VI)
       setLoading(false)
       return
@@ -141,14 +91,6 @@ export default function LoginPage() {
             ...(captchaToken ? { captchaToken } : {}),
           },
         })
-        // #region agent debug
-        LOG('H1', 'signUp_RESPONSE', {
-          hasError: !!error,
-          errorMsg: error?.message,
-          status: isAuthError(error) ? error.status : undefined,
-          code: isAuthError(error) ? error.code : undefined,
-        })
-        // #endregion
         if (error) throw error
         setRegistered(true)
       } else {
@@ -157,26 +99,13 @@ export default function LoginPage() {
           password,
           ...(captchaToken ? { options: { captchaToken } } : {}),
         })
-        // #region agent debug
-        LOG('H1', 'signIn_RESPONSE', {
-          hasError: !!error,
-          errorMsg: error?.message,
-          status: isAuthError(error) ? error.status : undefined,
-          code: isAuthError(error) ? error.code : undefined,
-        })
-        // #endregion
         if (error) throw error
-        window.location.href = '/'
+        const params = new URLSearchParams(window.location.search)
+        const redirect = params.get('redirect')
+        window.location.href = redirect ? `/${redirect}` : '/'
       }
     } catch (err: unknown) {
       const msg = formatAuthFailureMessage(err)
-      // #region agent debug
-      LOG('H1', 'handleSubmit_CATCH', {
-        msg,
-        status: isAuthError(err) ? err.status : undefined,
-        code: isAuthError(err) ? err.code : undefined,
-      })
-      // #endregion
       setError(msg)
     } finally {
       setLoading(false)
@@ -186,15 +115,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4 py-16">
       <div className="w-full max-w-md animate-fade-in-up">
-        {/* Card */}
-        <div className="card-base p-8 sm:p-10">
-          {/* Success state (post-registration) */}
+        <div className="card-base p-8 sm:p-10 border-gold/10">
           {registered ? (
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent-green-light mb-6">
                 <CheckCircle2 size={32} className="text-accent-green" />
               </div>
-              <h1 className="text-2xl font-bold text-primary mb-3">
+              <h1 className="text-2xl font-display font-bold text-primary mb-3">
                 Đăng ký thành công!
               </h1>
               <p className="text-sm text-text-muted mb-2">
@@ -207,39 +134,36 @@ export default function LoginPage() {
               <div className="space-y-3">
                 <button
                   onClick={() => { setRegistered(false); setIsRegister(false); setEmail(''); setPassword(''); setFullName('') }}
-                  className="btn-primary w-full"
+                  className="btn-primary w-full rounded-full"
                 >
                   Đăng nhập ngay
                 </button>
-                <a href="/" className="btn-secondary w-full block text-center">
+                <a href="/" className="btn-secondary w-full block text-center rounded-full">
                   Quay lại trang chủ
                 </a>
               </div>
             </div>
           ) : (
             <>
-              {/* Header */}
               <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/5 mb-4">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-gold/10 to-gold/5 mb-4">
                   {isRegister ? (
-                    <UserPlus size={24} className="text-primary" />
+                    <UserPlus size={24} className="text-gold" />
                   ) : (
-                    <LogIn size={24} className="text-primary" />
+                    <LogIn size={24} className="text-gold" />
                   )}
                 </div>
-                <h1 className="text-2xl font-bold text-primary">
-                  {isRegister ? 'Tạo tài khoản mới' : 'Chào mừng trở lại'}
+                <h1 className="text-2xl font-display font-bold text-primary">
+                  {isRegister ? 'Tạo Tài Khoản' : 'Chào Mừng Trở Lại'}
                 </h1>
                 <p className="text-sm text-text-muted mt-1">
                   {isRegister
-                    ? 'Điền thông tin để đăng ký tài khoản'
-                    : 'Đăng nhập để tiếp tục mua sắm'}
+                    ? 'Đăng ký để trải nghiệm dịch vụ UniTEA'
+                    : 'Đăng nhập để tiếp tục thưởng thức'}
                 </p>
               </div>
 
-              {/* Form */}
               <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                {/* Full name (register only) */}
                 {isRegister && (
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-primary" htmlFor="fullName">
@@ -257,7 +181,6 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* Email */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-primary" htmlFor="email">
                     Email <span className="text-accent-red">*</span>
@@ -273,7 +196,6 @@ export default function LoginPage() {
                   />
                 </div>
 
-                {/* Password */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-primary" htmlFor="password">
                     Mật khẩu <span className="text-accent-red">*</span>
@@ -292,7 +214,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-muted hover:text-primary cursor-pointer transition-colors duration-150"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-text-muted hover:text-gold cursor-pointer transition-colors duration-200"
                       aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -307,9 +229,8 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* Error message */}
                 {error && (
-                  <div className="flex items-start gap-2 p-3 rounded-lg bg-accent-red-light text-accent-red text-sm">
+                  <div className="flex items-start gap-2 p-3 rounded-xl bg-accent-red-light text-accent-red text-sm">
                     <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-7v2h2v-2h-2zm0-8v6h2V7h-2z" />
                     </svg>
@@ -317,11 +238,10 @@ export default function LoginPage() {
                   </div>
                 )}
 
-                {/* Submit */}
                 <button
                   type="submit"
                   disabled={loading || !captchaOk}
-                  className="btn-primary w-full flex items-center justify-center gap-2 mt-2"
+                  className="btn-primary w-full flex items-center justify-center gap-2 mt-2 rounded-full"
                 >
                   {loading ? (
                     <>
@@ -334,7 +254,6 @@ export default function LoginPage() {
                 </button>
               </form>
 
-              {/* Toggle */}
               <div className="mt-6 text-center">
                 <p className="text-sm text-text-muted">
                   {isRegister ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}{' '}
@@ -344,7 +263,7 @@ export default function LoginPage() {
                       setError('')
                       setRegistered(false)
                     }}
-                    className="font-medium text-primary hover:underline cursor-pointer transition-colors duration-150"
+                    className="font-medium text-gold hover:underline cursor-pointer transition-colors duration-200"
                   >
                     {isRegister ? 'Đăng nhập ngay' : 'Đăng ký miễn phí'}
                   </button>
@@ -354,24 +273,22 @@ export default function LoginPage() {
           )}
         </div>
 
-        {/* Info note */}
         <p className="text-xs text-text-muted text-center mt-4">
           Bằng việc đăng ký, bạn đồng ý với{' '}
-          <button className="underline cursor-pointer hover:text-primary transition-colors">
+          <button className="underline cursor-pointer hover:text-gold transition-colors">
             Điều khoản sử dụng
           </button>{' '}
           và{' '}
-          <button className="underline cursor-pointer hover:text-primary transition-colors">
+          <button className="underline cursor-pointer hover:text-gold transition-colors">
             Chính sách bảo mật
           </button>
           .
         </p>
 
-        {/* Staff portal link */}
         <div className="mt-8 flex justify-center">
           <a 
             href="/adminlogin" 
-            className="text-[11px] font-medium text-text-muted hover:text-primary flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-primary/5 transition-all duration-200"
+            className="text-[11px] font-medium text-text-muted hover:text-gold flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-gold/5 transition-all duration-300"
           >
             <span>Dành cho nhân viên cửa hàng</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

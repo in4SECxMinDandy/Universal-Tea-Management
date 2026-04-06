@@ -11,10 +11,9 @@ type OrderFormProps = {
   price: number
   isAvailable: boolean
   userId: string | null
-  stockQuantity: number
 }
 
-export default function OrderForm({ foodId, price, isAvailable, userId, stockQuantity }: OrderFormProps) {
+export default function OrderForm({ foodId, price, isAvailable, userId }: OrderFormProps) {
   const [quantity, setQuantity] = useState(1)
   const [note, setNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -23,8 +22,7 @@ export default function OrderForm({ foodId, price, isAvailable, userId, stockQua
   const router = useRouter()
   const supabase = createClient()
 
-  const maxQty = stockQuantity > 0 ? Math.min(stockQuantity, 99) : 99
-  const increment = () => setQuantity(prev => (prev < maxQty ? prev + 1 : prev))
+  const increment = () => setQuantity(prev => (prev < 99 ? prev + 1 : prev))
   const decrement = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1))
 
   const handleOrder = async () => {
@@ -34,10 +32,6 @@ export default function OrderForm({ foodId, price, isAvailable, userId, stockQua
     }
 
     if (!isAvailable) return
-    if (stockQuantity > 0 && quantity > stockQuantity) {
-      setMessage({ type: 'error', text: `Chỉ còn ${stockQuantity} suất. Vui lòng giảm số lượng.` })
-      return
-    }
 
     setIsSubmitting(true)
     setMessage(null)
@@ -56,8 +50,6 @@ export default function OrderForm({ foodId, price, isAvailable, userId, stockQua
       setMessage({ type: 'success', text: 'Đặt hàng thành công! Xem tiến độ tại trang Lịch sử đơn hàng.' })
       setQuantity(1)
       setNote('')
-      // Refresh server component to show updated stock_quantity
-      router.refresh()
     } catch (err: any) {
       console.error('Order error:', err)
       setMessage({ type: 'error', text: 'Đặt hàng thất bại. Vui lòng thử lại sau.' })
@@ -68,7 +60,6 @@ export default function OrderForm({ foodId, price, isAvailable, userId, stockQua
 
   return (
     <div className="space-y-6">
-      {/* Messages */}
       {message && (
         <div className={`p-4 rounded-xl text-sm border flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in ${
           message.type === 'success' 
@@ -87,41 +78,34 @@ export default function OrderForm({ foodId, price, isAvailable, userId, stockQua
         </div>
       )}
 
-      <div className="flex flex-col gap-4 p-5 rounded-2xl bg-surface-card border border-border-subtle shadow-sm">
-        {/* Quantity */}
+      <div className="flex flex-col gap-4 p-6 rounded-2xl bg-white border border-border-subtle shadow-card-base">
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium text-primary">Số lượng</label>
-          <div className="flex items-center gap-1 bg-gray-50 border border-border-subtle rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-cream border border-border-subtle rounded-full p-1">
             <button 
               type="button"
               onClick={decrement}
               disabled={quantity <= 1 || isSubmitting}
-              className="p-1.5 text-text-muted hover:text-primary disabled:opacity-50 transition-colors"
+              className="p-2 text-text-muted hover:text-gold disabled:opacity-50 transition-colors rounded-full hover:bg-white"
             >
-              <Minus size={16} />
+              <Minus size={14} />
             </button>
-            <span className="w-8 text-center text-sm font-medium">{quantity}</span>
+            <span className="w-8 text-center text-sm font-semibold">{quantity}</span>
             <button 
               type="button"
               onClick={increment}
-              disabled={quantity >= maxQty || isSubmitting}
-              className="p-1.5 text-text-muted hover:text-primary disabled:opacity-50 transition-colors"
+              disabled={quantity >= 99 || isSubmitting}
+              className="p-2 text-text-muted hover:text-gold disabled:opacity-50 transition-colors rounded-full hover:bg-white"
             >
-              <Plus size={16} />
+              <Plus size={14} />
             </button>
           </div>
         </div>
-        {stockQuantity > 0 && quantity >= maxQty && (
-          <p className="text-xs text-amber-600 font-medium text-right">
-            Đã đạt giới hạn ({stockQuantity} suất còn lại)
-          </p>
-        )}
 
-        {/* Note */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-primary flex justify-between">
-            <span>Ghi chú (Tùy chọn)</span>
-            <span className="text-xs text-text-muted font-normal">Ví dụ: Ít đá, nhiều sữa,...</span>
+            <span>Ghi chú</span>
+            <span className="text-xs text-text-muted font-normal">VD: Ít đá, nhiều sữa</span>
           </label>
           <textarea
             value={note}
@@ -133,18 +117,16 @@ export default function OrderForm({ foodId, price, isAvailable, userId, stockQua
           />
         </div>
 
-        {/* Total Price overview */}
-        <div className="pt-3 border-t border-border-subtle flex justify-between items-center">
+        <div className="pt-4 border-t border-border-subtle flex justify-between items-center">
           <span className="text-sm text-text-secondary font-medium">Tạm tính:</span>
-          <span className="text-xl font-bold text-primary">{formatPrice(price * quantity)}</span>
+          <span className="text-xl font-display font-bold text-gold">{formatPrice(price * quantity)}</span>
         </div>
       </div>
 
-      {/* Action button */}
       <button
         onClick={handleOrder}
         disabled={!isAvailable || isSubmitting}
-        className="btn-primary w-full flex items-center justify-center gap-2 py-3.5 shadow-md shadow-primary/20 disabled:shadow-none"
+        className="btn-primary w-full flex items-center justify-center gap-2 py-4 rounded-full shadow-button-glow disabled:shadow-none text-base"
       >
         {isSubmitting ? (
           <Loader2 size={18} className="animate-spin" />
