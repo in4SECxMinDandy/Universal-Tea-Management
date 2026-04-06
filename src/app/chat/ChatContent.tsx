@@ -22,7 +22,6 @@ interface ChatSession {
   guest_name: string | null
 }
 
-// Key used to persist chat session across page reloads for anonymous guests
 const SESSION_STORAGE_KEY = 'unitea_chat_session_id'
 
 function ChatContent() {
@@ -35,20 +34,16 @@ function ChatContent() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(false)
   const [invalidToken, setInvalidToken] = useState(false)
-  // Guest name prompt — shown once for anonymous QR guests
   const [showNamePrompt, setShowNamePrompt] = useState(false)
   const [guestNameInput, setGuestNameInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const prevMsgCountRef = useRef(0)
-  // Keep a ref to current session id to avoid stale closure in realtime handler
   const sessionIdRef = useRef<string | null>(null)
   const searchParams = useSearchParams()
   const supabase = createClient()
 
   const visitToken = searchParams.get('visit_token')
 
-  // ── Fetch messages — stable ref to avoid stale closures ─────────────────
   const fetchMessages = useCallback(async (sid: string) => {
     const { data: msgs } = await supabase
       .from('chat_messages')
@@ -61,7 +56,6 @@ function ChatContent() {
 
   useEffect(() => {
     async function init() {
-      // ── Step 1: ensure authenticated uid ────────────────────────────────
       let { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
@@ -73,7 +67,6 @@ function ChatContent() {
         user = anonData.user
       }
 
-      // ── Step 2: ensure profile row exists ───────────────────────────────
       await supabase
         .from('profiles')
         .upsert({ id: user.id, full_name: null }, { onConflict: 'id', ignoreDuplicates: true })
@@ -81,8 +74,6 @@ function ChatContent() {
       let sessionId: string | null = null
       let resolvedSession: ChatSession | null = null
 
-      // ── Step 3a: try to restore session from sessionStorage ──────────────
-      // This lets anonymous guests keep their conversation after reload
       const savedSessionId = sessionStorage.getItem(SESSION_STORAGE_KEY)
       if (savedSessionId) {
         const { data: savedChat } = await supabase
@@ -96,12 +87,10 @@ function ChatContent() {
           sessionId = savedChat.id
           resolvedSession = savedChat as unknown as ChatSession
         } else {
-          // Stale entry — remove it
           sessionStorage.removeItem(SESSION_STORAGE_KEY)
         }
       }
 
-      // ── Step 3b: resolve visit session from QR token ─────────────────────
       if (!sessionId && visitToken) {
         const { data: visitSession } = await supabase
           .from('visit_sessions')
@@ -117,7 +106,6 @@ function ChatContent() {
           return
         }
 
-        // Look for existing chat session for this visit + user
         const { data: existingChat } = await supabase
           .from('chat_sessions')
           .select()
@@ -142,12 +130,10 @@ function ChatContent() {
             .single()
           sessionId = newChat?.id ?? null
           resolvedSession = newChat as unknown as ChatSession ?? null
-          // Show name prompt for new QR sessions (anonymous guests)
           if (sessionId && user.is_anonymous) setShowNamePrompt(true)
         }
       }
 
-      // ── Step 3c: resume any open session (for logged-in users) ───────────
       if (!sessionId) {
         const { data: existing } = await supabase
           .from('chat_sessions')
@@ -161,12 +147,10 @@ function ChatContent() {
         if (existing) {
           sessionId = existing.id
           resolvedSession = existing as unknown as ChatSession
-          // If user has a proper profile (not anonymous), mark as account type
           if (!user.is_anonymous && existing.session_type !== 'account') {
             await supabase.from('chat_sessions').update({ session_type: 'account' }).eq('id', existing.id)
           }
         } else if (!visitToken) {
-          // Create new session for logged-in user without QR
           const { data: newSessionData } = await supabase
             .from('chat_sessions')
             .insert({ user_id: user.id, session_type: 'account' })
@@ -179,7 +163,6 @@ function ChatContent() {
         }
       }
 
-      // ── Step 4: persist session & load messages ───────────────────────────
       if (sessionId && resolvedSession) {
         sessionIdRef.current = sessionId
         sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId)
@@ -193,8 +176,6 @@ function ChatContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // ── Realtime subscription ────────────────────────────────────────────────
-  // Reads sessionIdRef instead of session.id to avoid stale closure bug
   useEffect(() => {
     if (!session?.id) return
 
@@ -216,7 +197,6 @@ function ChatContent() {
         }
       )
       .subscribe((status) => {
-        // If subscription fails, fall back to polling every 5s
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.warn('[Chat] Realtime unavailable, using polling fallback')
         }
@@ -228,7 +208,6 @@ function ChatContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, fetchMessages])
 
-  // Listen to chat_session status changes (e.g. if Admin closes it remotely)
   useEffect(() => {
     if (!session?.id) return
 
@@ -253,7 +232,6 @@ function ChatContent() {
     }
   }, [session?.id])
 
-  // ── Polling fallback (every 5s if realtime is unreliable) ────────────────
   useEffect(() => {
     if (!session?.id) return
     const interval = setInterval(() => {
@@ -263,12 +241,7 @@ function ChatContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, fetchMessages])
 
-  useEffect(() => {
-    if (messages.length > prevMsgCountRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-    prevMsgCountRef.current = messages.length
-  }, [messages])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -338,13 +311,11 @@ function ChatContent() {
     if (!msgError) {
       setInput('')
       clearImage()
-      // Optimistically fetch after send (realtime will also catch it)
       await fetchMessages(session.id)
     }
     setSending(false)
   }
 
-  // ── Save guest name (for anonymous QR guests) ────────────────────────────
   async function saveGuestName(name: string) {
     if (!session) return
     const trimmed = name.trim()
@@ -358,7 +329,6 @@ function ChatContent() {
     setShowNamePrompt(false)
   }
 
-  // ── States ────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
@@ -398,10 +368,8 @@ function ChatContent() {
     )
   }
 
-  // ── Chat UI ───────────────────────────────────────────────────────────────
   return (
     <div className="page-container py-6 max-w-3xl">
-      {/* Guest Name Prompt Modal */}
       {showNamePrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm animate-scale-in">
@@ -437,7 +405,6 @@ function ChatContent() {
         </div>
       )}
 
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-full bg-accent-green-light flex items-center justify-center">
           <MessageCircle size={20} className="text-accent-green" />
@@ -448,9 +415,7 @@ function ChatContent() {
         </div>
       </div>
 
-      {/* Chat box */}
       <div className="card-base overflow-hidden flex flex-col h-[520px] sm:h-[600px]">
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-4 scrollbar-hide">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center">
@@ -515,7 +480,6 @@ function ChatContent() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Image Preview */}
         {imagePreview && (
           <div className="px-4 pt-3 border-t border-border-subtle bg-surface-card">
             <div className="relative inline-block">
@@ -538,7 +502,6 @@ function ChatContent() {
           </div>
         )}
 
-        {/* Input */}
         {session.status === 'closed' ? (
           <div className="border-t border-border-subtle p-6 bg-surface-card text-center">
             <div className="inline-flex items-center justify-center p-3 rounded-full bg-accent-red-light text-accent-red mb-3">
@@ -575,7 +538,7 @@ function ChatContent() {
                   <ImagePlus size={18} />
                 )}
               </label>
-  
+
               <div className="flex-1 relative">
                 <textarea
                   value={input}
