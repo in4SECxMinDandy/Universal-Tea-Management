@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, UtensilsCrossed, MessageCircle, Tag, Settings, LogOut, ShoppingBag, BookOpen } from 'lucide-react'
+import { LayoutDashboard, UtensilsCrossed, MessageCircle, Tag, Settings, LogOut, ShoppingBag } from 'lucide-react'
 
 interface UserProfile {
   id: string
@@ -93,7 +93,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/orders', label: 'Đơn hàng', icon: ShoppingBag, badge: pendingOrderCount > 0 ? pendingOrderCount : undefined },
     { href: '/admin/foods', label: 'Quản lý món', icon: UtensilsCrossed },
-    { href: '/admin/thuc-pham', label: 'Xem thực đơn', icon: BookOpen },
     { href: '/admin/categories', label: 'Phân loại', icon: Tag },
     { href: '/admin/chat', label: 'Chat', icon: MessageCircle, badge: openChatCount > 0 ? openChatCount : undefined },
   ]
