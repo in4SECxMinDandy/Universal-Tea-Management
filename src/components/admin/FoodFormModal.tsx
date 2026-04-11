@@ -32,6 +32,7 @@ export default function FoodFormModal({
   const [saved, setSaved] = useState(false)
   const supabase = createClient()
 
+  // --- Xử lý sự kiện khi ấn Lưu (Submit) form (Hỗ trợ cả tạo mới và cập nhật) ---
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -90,8 +91,10 @@ export default function FoodFormModal({
       className="fixed inset-0 bg-primary/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
+      {/* --- Lớp nền tối (Overlay) cho phép tạo hiệu ứng popup Modal. Tự động đóng nếu click ngoài khung --- */}
+      {/* Khung giao diện trung tâm cửa sổ Modal */}
       <div className="bg-surface-card rounded-2xl shadow-modal w-full max-w-lg max-h-[90vh] overflow-hidden animate-scale-in">
-        {/* Header */}
+        {/* --- Khu vực Header: Chứa Tiêu đề Popup và Nút đóng --- */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
           <div>
             <h2 className="text-lg font-bold text-primary">
@@ -110,9 +113,9 @@ export default function FoodFormModal({
           </button>
         </div>
 
-        {/* Form */}
+        {/* --- Giao diện Nhập liệu chính (Sử dụng cuộn dọc Scrollbar khi nội dung dài) --- */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
-          {/* Name */}
+          {/* Ô nhập thông tin: Tên món ăn */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Tên món <span className="text-accent-red">*</span></label>
             <input
@@ -125,7 +128,7 @@ export default function FoodFormModal({
             />
           </div>
 
-          {/* Price */}
+          {/* Ô nhập thông tin: Giá bán (Bắt buộc kiểu chữ số) */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Giá (VNĐ) <span className="text-accent-red">*</span></label>
             <input
@@ -139,7 +142,7 @@ export default function FoodFormModal({
             />
           </div>
 
-          {/* Category */}
+          {/* Dropdown danh sách hệ thống: Lựa chọn Danh Mục phân loại món */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Danh mục</label>
             <select
@@ -154,7 +157,7 @@ export default function FoodFormModal({
             </select>
           </div>
 
-          {/* Description */}
+          {/* Ô văn bản đa dòng (Textarea): Mô tả chi tiết thành phần, hương vị món */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Mô tả</label>
             <textarea
@@ -166,7 +169,7 @@ export default function FoodFormModal({
             />
           </div>
 
-          {/* Stock */}
+          {/* Ô nhập thông tin: Số lượng giới hạn còn trong Kho/Quán */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Số lượng tồn kho</label>
             <input
@@ -179,7 +182,7 @@ export default function FoodFormModal({
             />
           </div>
 
-          {/* Toggle switches */}
+          {/* Công tắc Toggle UI: Đổi trạng thái hiển thị Nổi bật hoặc Cho phép bán */}
           <div className="flex gap-6">
             <label className="flex items-center gap-3 cursor-pointer group">
               <div className="relative">
@@ -226,7 +229,7 @@ export default function FoodFormModal({
             </label>
           </div>
 
-          {/* Image upload */}
+          {/* Khu vực thao tác tập tin: Tải hình ảnh minh hoạ món ăn lên máy chủ Supabase Storage */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Hình ảnh</label>
             <label
@@ -260,7 +263,7 @@ export default function FoodFormModal({
             </label>
           </div>
 
-          {/* Preview */}
+          {/* Không gian giao diện Xem Trước ảnh (Preview) ngay khi người dùng pick xong */}
           {(form.image_url || file) && (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-primary">Xem trước</label>
@@ -284,7 +287,7 @@ export default function FoodFormModal({
             </div>
           )}
 
-          {/* Actions */}
+          {/* --- Các Nút Hành Động Ở Dưới (Lưu xác nhận / Huỷ form) --- */}
           <div className="flex gap-3 pt-2 border-t border-border-subtle">
             <button
               type="submit"

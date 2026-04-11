@@ -27,6 +27,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-border-subtle/50 transition-all duration-500">
+      {/* Khung Navigation Bar: Chứa Logo, Link điều hướng và Trình duyệt User */}
       <nav className="page-container">
         <div className="flex items-center justify-between h-[72px]">
           <Link href="/home" className="flex items-center gap-3 cursor-pointer group">
@@ -43,6 +44,7 @@ export default function Header() {
             </div>
           </Link>
 
+          {/* Danh sách Liên Kết Menu điều hướng: Chỉ hiển thị trên Desktop */}
           <ul className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
               const isActive = pathname === link.href
@@ -69,6 +71,7 @@ export default function Header() {
             })}
           </ul>
 
+          {/* Khu vực Tài khoản / Hành động người dùng: Nút Chat, Avatar Dropdown hoặc Nút Đăng nhập */}
           <div className="hidden md:flex items-center gap-2">
             {user ? (
               <>
@@ -149,6 +152,7 @@ export default function Header() {
             )}
           </div>
 
+          {/* Nút bấm Hamburger Button: Mở thanh công cụ Menu trên Màn hình điện thoại/máy tính bảng nhỏ */}
           <button
             className="md:hidden p-2 rounded-full hover:bg-cream-dark cursor-pointer transition-colors duration-200 focus-ring"
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -164,6 +168,7 @@ export default function Header() {
         </div>
       </nav>
 
+      {/* Khung Dropdown Menu đổ xuống: Chỉ hiển thị trên giao diện Mobile khi được mở */}
       <div
         className={`
           md:hidden overflow-hidden transition-all duration-500 ease-luxury

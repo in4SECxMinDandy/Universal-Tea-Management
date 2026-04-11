@@ -242,7 +242,7 @@ function ChatContent() {
   useEffect(() => {
     if (!session?.id) return
 
-    const pollInterval = 15000 // 15 秒作为备用轮询
+    const pollInterval = 15000 // Chu kỳ 15 giây để quét (polling) dự phòng nếu realtime gặp vấn đề
     const interval = setInterval(() => {
       if (sessionIdRef.current) fetchMessages(sessionIdRef.current)
     }, pollInterval)
@@ -385,6 +385,7 @@ function ChatContent() {
 
   return (
     <div className="page-container py-6 max-w-3xl">
+      {/* Khung Popup (Modal) hỏi tên người dùng khi bắt đầu chat bằng mã QR */}
       {showNamePrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm animate-scale-in">
@@ -420,6 +421,7 @@ function ChatContent() {
         </div>
       )}
 
+      {/* Phần Tiêu đề chính của trang Chat */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-full bg-accent-green-light flex items-center justify-center">
           <MessageCircle size={20} className="text-accent-green" />
@@ -430,7 +432,9 @@ function ChatContent() {
         </div>
       </div>
 
+      {/* Khung giao diện chính chứa toàn bộ nội dung chat */}
       <div className="card-base overflow-hidden flex flex-col h-[520px] sm:h-[600px]">
+        {/* Khu vực cuộn hiển thị lịch sử tin nhắn */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-4 scrollbar-hide">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center">
@@ -495,6 +499,7 @@ function ChatContent() {
           <div ref={bottomRef} />
         </div>
 
+        {/* Khung xem trước ảnh tải lên (nếu có) */}
         {imagePreview && (
           <div className="px-4 pt-3 border-t border-border-subtle bg-surface-card">
             <div className="relative inline-block">
@@ -517,6 +522,7 @@ function ChatContent() {
           </div>
         )}
 
+        {/* Khu vực hành động dưới cùng: Hiển thị trạng thái đóng phiên hoặc Form nhập liệu */}
         {session.status === 'closed' ? (
           <div className="border-t border-border-subtle p-6 bg-surface-card text-center">
             <div className="inline-flex items-center justify-center p-3 rounded-full bg-accent-red-light text-accent-red mb-3">
@@ -529,6 +535,7 @@ function ChatContent() {
           </div>
         ) : (
           <div className="border-t border-border-subtle p-4 bg-surface-card">
+            {/* Khu vực Form nhập liệu: Chọn ảnh, Ô nhập chữ, và Nút gửi container */}
             <div className="flex gap-2 items-end">
               <input
                 ref={fileInputRef}

@@ -35,7 +35,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
   const isFirstLoadRef = useRef(true)
   const supabase = createClient()
 
-  // Stable fetch function to avoid stale closures in realtime handler
+  // Hàm fetch dữ liệu ổn định để tránh lỗi closure cũ trong các sự kiện realtime
   const fetchMessages = useCallback(async () => {
     const { data: msgs } = await supabase
       .from('chat_messages')
@@ -51,7 +51,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
     fetchMessages()
   }, [fetchMessages])
 
-  // Realtime subscription for new messages
+  // Đăng ký realtime với Supabase để nhận tin nhắn mới ngay lập tức
   useEffect(() => {
     const channel = supabase
       .channel(`admin-chat-messages-${sessionId}`)
@@ -66,7 +66,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, fetchMessages])
 
-  // Polling fallback every 5s in case realtime drops
+  // Cơ chế quét (polling) dự phòng mỗi 5s đề phòng kết nối realtime bị ngắt
   useEffect(() => {
     const interval = setInterval(() => fetchMessages(), 5000)
     return () => clearInterval(interval)
@@ -82,11 +82,11 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
     if (!container) return
     if (messages.length > prevMsgCountRef.current) {
       if (isFirstLoadRef.current) {
-        // Instantly jump to bottom when first opening a session
+        // Nhảy ngay xuống vị trí cuối cùng khi lần đầu mở phiên chat
         container.scrollTop = container.scrollHeight
         isFirstLoadRef.current = false
       } else {
-        // Smoothly scroll for genuinely new messages
+        // Cuộn mượt mà xuống dưới cùng khi có tin nhắn mới
         container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
       }
     }
@@ -161,7 +161,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
     if (!msgError) {
       setInput('')
       clearImage()
-      // Optimistically fetch after send
+      // Tải lại tin nhắn ngay lập tức sau khi gửi để cập nhật giao diện (Optimistic update)
       await fetchMessages()
     }
     setSending(false)
@@ -178,7 +178,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
 
   return (
     <div className="flex flex-col h-full">
-      {/* Chat header */}
+      {/* --- Phần Header: Hiển thị thông tin phiên chat (tên người dùng, loại tài khoản/mã QR) --- */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-border-subtle bg-surface-card flex-shrink-0">
         <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${
           sessionType === 'account' ? 'bg-blue-100' : 'bg-amber-100'
@@ -215,7 +215,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
         )}
       </div>
 
-      {/* Messages */}
+      {/* --- Phần nội dung: Khu vực hiển thị danh sách các tin nhắn --- */}
       <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-5 flex flex-col gap-3 bg-gray-50/50">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -274,7 +274,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
         <div />
       </div>
 
-      {/* Image Preview */}
+      {/* --- Phần Preview Ảnh: Khu vực xem trước ảnh trước khi gửi --- */}
       {imagePreview && (
         <div className="px-4 pt-3 border-t border-border-subtle bg-surface-card flex-shrink-0">
           <div className="relative inline-block">
@@ -297,7 +297,7 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
         </div>
       )}
 
-      {/* Input */}
+      {/* --- Phần Input: Khu vực khung nhập văn bản và nút gửi tin nhắn --- */}
       <div className="border-t border-border-subtle p-4 bg-surface-card flex-shrink-0">
         <div className="flex gap-2 items-end">
           <input

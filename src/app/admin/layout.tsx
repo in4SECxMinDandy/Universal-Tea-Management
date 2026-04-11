@@ -103,10 +103,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <RoleGate role="STORE_ADMIN">
+      {/* Khung bao bọc toàn bộ bố cục trang quản trị Admin */}
       <div className="flex min-h-screen bg-surface-bg">
-        {/* Sidebar */}
+        {/* --- Cột Bên Trái: Thanh điều hướng dọc (Sidebar) --- */}
         <aside className="w-64 flex-shrink-0 border-r border-border-subtle bg-surface-card sticky top-0 h-screen overflow-y-auto flex flex-col">
-          {/* Logo */}
+          {/* Logo ứng dụng */}
           <div className="px-6 py-5 border-b border-border-subtle">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -116,7 +117,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
-          {/* Nav */}
+          {/* Menu Điều Hướng: Danh sách các tính năng quản lý */}
           <nav className="px-3 py-4 space-y-1 flex-1">
             {adminLinks.map(link => {
               const isActive = pathname === link.href || (link.href !== '/admin' && pathname.startsWith(link.href))
@@ -149,7 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             })}
           </nav>
 
-          {/* User info + logout */}
+          {/* Khu vực Dưới Cùng: Thông tin tài khoản Admin và Nút đăng xuất */}
           <div className="px-3 py-4 border-t border-border-subtle space-y-3">
             {user && (
               <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50">
@@ -181,7 +182,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </aside>
 
-        {/* Content */}
+        {/* --- Cột Bên Phải: Khu vực Nội dung (Content) --- */}
         <div className="flex-1 min-w-0">
           <div className="page-container py-8">
             {children}

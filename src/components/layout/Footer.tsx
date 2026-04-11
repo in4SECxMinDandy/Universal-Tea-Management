@@ -4,7 +4,9 @@ import { ArrowRight } from 'lucide-react'
 export default function Footer() {
   return (
     <footer className="mt-auto bg-primary text-white/80">
+      {/* --- Giao diện Footer (Chân trang) chung của toàn bộ Hệ thống --- */}
       <div className="page-container py-16">
+        {/* Bố cục Footer gồm 3 cột chính: Tên thương hiệu - Khám phá - Liên hệ */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -63,6 +65,7 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* Dòng viền cuối bản quyền: Cung cấp thông tin Copyright và Thông điệp */}
         <div className="border-t border-white/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-white/30">
             &copy; {new Date().getFullYear()} universaltea. All rights reserved.

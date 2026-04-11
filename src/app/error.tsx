@@ -19,6 +19,7 @@ export default function Error({ error, reset }: ErrorProps) {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+      {/* --- Giao diện hiển thị khi ứng dụng gặp lỗi --- */}
       <div className="w-20 h-20 rounded-2xl bg-accent-red-light flex items-center justify-center mb-6">
         <AlertTriangle size={36} className="text-accent-red" />
       </div>

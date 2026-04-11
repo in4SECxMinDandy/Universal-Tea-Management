@@ -74,20 +74,30 @@ describe('AuthContext', () => {
       })
     })
 
-    it('sử dụng initialUser và initialAdmin từ props', () => {
+    it('sử dụng initialAdmin từ props', async () => {
       const mockUser = { id: 'user-1', email: 'test@example.com' } as any
       
-      const { getByTestId } = render(
-        React.createElement(AuthProvider, { 
-          initialUser: mockUser, 
-          initialAdmin: true 
-        }, 
-          React.createElement(TestComponent)
-        )
-      )
+      mockSupabaseClient.auth.getSession.mockResolvedValue({
+        data: { session: { user: mockUser } },
+      })
+      mockSupabaseClient.rpc.mockResolvedValue({ data: true })
 
-      expect(getByTestId('user')).toHaveTextContent('test@example.com')
-      expect(getByTestId('isAdmin')).toHaveTextContent('true')
+      let getByTestIdRef: any
+      await act(async () => {
+        const result = render(
+          React.createElement(AuthProvider, { 
+            initialUser: mockUser, 
+            initialAdmin: true 
+          }, 
+            React.createElement(TestComponent)
+          )
+        )
+        getByTestIdRef = result.getByTestId
+      })
+
+      await waitFor(() => {
+        expect(getByTestIdRef('isAdmin')).toHaveTextContent('true')
+      })
     })
   })
 

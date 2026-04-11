@@ -27,6 +27,8 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ slu
 
   return (
     <div className="page-container py-12 sm:py-16">
+      {/* --- Container chính bọc toàn bộ nội dung hiển thị --- */}
+      {/* Thanh điều hướng Breadcrumb (Ví dụ: Trang chủ / Thực đơn / Tên món) */}
       <nav className="flex items-center gap-2 text-sm text-text-muted mb-8" aria-label="Breadcrumb">
         <Link href="/home" className="hover:text-gold cursor-pointer transition-colors duration-200">
           Trang chủ
@@ -39,7 +41,9 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ slu
         <span className="text-primary font-medium truncate">{food.name}</span>
       </nav>
 
+      {/* Layout chia 2 cột: Cột Ảnh và Cột Thông Tin/Đặt hàng */}
       <div className="grid md:grid-cols-2 gap-10 lg:gap-16">
+        {/* --- Cột Trái: Khu vực hiển thị Ảnh minh hoạ --- */}
         <div className="relative animate-fade-in">
           <div className="relative h-[350px] sm:h-[450px] bg-gradient-to-br from-cream-dark to-cream rounded-3xl overflow-hidden shadow-luxury">
             {food.image_url ? (
@@ -58,6 +62,7 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ slu
             )}
           </div>
 
+          {/* Góc phải màn hình của phần ảnh: Các huy hiệu trạng thái (Nổi bật, Hết hàng) */}
           <div className="absolute top-4 right-4 flex flex-col gap-2">
             {food.is_featured && (
               <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-gold text-white shadow-md">
@@ -73,6 +78,7 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ slu
           </div>
         </div>
 
+        {/* --- Cột Phải: Thông tin chi tiết món ăn (Tên, Giá, Mô tả) --- */}
         <div className="flex flex-col justify-center animate-fade-in-up">
           {food.category && (
             <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gold uppercase tracking-[0.15em] mb-3">
@@ -114,6 +120,7 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ slu
             )}
           </div>
 
+          {/* Component: Form tương tác số lượng và Nút xác nhận đặt món */}
           <OrderForm 
             foodId={food.id} 
             price={food.price} 

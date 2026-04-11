@@ -132,6 +132,7 @@ export default function HistoryPage() {
 
   return (
     <div className="page-container py-12 sm:py-16 min-h-[calc(100vh-100px)]">
+      {/* --- Container chính của trang lịch sử đơn hàng --- */}
       <div className="max-w-4xl mx-auto animate-fade-in-up">
         
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -150,12 +151,14 @@ export default function HistoryPage() {
           </Link>
         </div>
 
+        {/* Trạng thái Loading: Hiển thị bộ đệm xoay khi đang lấy dữ liệu báo cáo */}
         {loading && orders.length === 0 ? (
           <div className="text-center py-20 bg-surface-card rounded-3xl border border-gold/10">
             <Loader2 size={32} className="mx-auto text-gold animate-spin mb-4" />
             <p className="text-text-muted">Đang tải lịch sử...</p>
           </div>
         ) : orders.length === 0 ? (
+          {/* Trạng thái Trống: Không có đơn hàng nào, gợi ý người dùng đặt món */}
           <div className="text-center py-24 bg-surface-card rounded-3xl border border-gold/10 border-dashed">
             <Coffee size={48} className="mx-auto text-gold/50 mb-4 opacity-80" />
             <h3 className="text-xl font-display font-bold text-primary mb-2">Chưa có đơn hàng nào</h3>
@@ -165,13 +168,14 @@ export default function HistoryPage() {
             </Link>
           </div>
         ) : (
+          {/* Trạng thái Có dữ liệu: Danh sách các thẻ đơn hàng đã đặt */}
           <div className="space-y-5">
             {orders.map(order => (
               <div 
                 key={order.id} 
                 className="card-base p-5 sm:p-6 flex flex-col md:flex-row gap-5 items-start md:items-center hover:shadow-luxury transition-all duration-300"
               >
-                {/* Phần hiển thị ảnh nhỏ của món ăn nếu có */}
+                {/* Khu vực bên trái mỗi thẻ: Ảnh minh hoạ của món ăn */}
                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-cream-dark rounded-2xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-border-subtle">
                   {order.food?.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -181,7 +185,7 @@ export default function HistoryPage() {
                   )}
                 </div>
 
-                {/* Thông tin đơn hàng */}
+                {/* Khu vực bên phải mỗi thẻ: Chi tiết đơn (Mã, Trạng thái, Tên món, Tổng tiền) */}
                 <div className="flex-1 space-y-2.5 w-full">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-3">

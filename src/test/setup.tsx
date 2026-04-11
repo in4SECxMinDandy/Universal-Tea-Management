@@ -48,6 +48,9 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({}),
 }))
 
+// Mock scrollIntoView for refs
+Element.prototype.scrollIntoView = vi.fn()
+
 // Mock next/image
 vi.mock('next/image', () => {
   return {

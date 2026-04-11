@@ -64,7 +64,7 @@ export default function AdminFoodsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Apply search, filter, sort
+  // Lọc, tìm kiếm và sắp xếp danh sách kết quả ngay trên giao diện theo tuỳ chọn
   const filteredFoods = useMemo(() => {
     let result = [...foods]
 
@@ -116,17 +116,20 @@ export default function AdminFoodsPage() {
 
   const hasActiveFilters = searchQuery || selectedCategory || sortBy !== 'newest'
 
+  // Hỏi xác nhận và tiến hành xoá item món ăn hoàn toàn
   async function handleDelete(id: string) {
     if (!confirm('Bạn có chắc muốn xoá món này?')) return
     const { error } = await supabase.from('foods').delete().eq('id', id)
     if (!error) loadFoods()
   }
 
+  // Logic hiển thị Form Modal và gán dữ liệu món đang muốn sửa
   function handleEdit(food: Food) {
     setEditFood(food)
     setModalOpen(true)
   }
 
+  // Logic hiển thị Form Modal ở trạng thái trống (Thêm mới)
   function handleAdd() {
     setEditFood(null)
     setModalOpen(true)
@@ -139,7 +142,7 @@ export default function AdminFoodsPage() {
 
   return (
     <div>
-      {/* Page header */}
+      {/* --- Phần Header Của Trang. Chứa Tên trang và thông báo số món + Nút Gọi lệnh Thêm Món --- */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <div className="inline-flex items-center gap-1.5 text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">
@@ -159,10 +162,10 @@ export default function AdminFoodsPage() {
         </button>
       </div>
 
-      {/* Search, filter, sort bar */}
+      {/* --- Dải thanh công cụ xử lý nghiệp vụ: Tìm theo tên, Lọc theo loại, Đảo thứ tự --- */}
       {!loading && foods.length > 0 && (
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          {/* Search */}
+          {/* Component: Thanh Nhập Từ khoá Tìm Kiếm */}
           <div className="relative flex-1">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
@@ -183,7 +186,7 @@ export default function AdminFoodsPage() {
             )}
           </div>
 
-          {/* Category filter */}
+          {/* Component: Select chọn Danh mục món để lọc */}
           <div className="relative">
             <select
               value={selectedCategory}
@@ -198,7 +201,7 @@ export default function AdminFoodsPage() {
             <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
           </div>
 
-          {/* Sort */}
+          {/* Component: Dropdown Menu chọn chế độ Sắp Xếp (Sort) */}
           <div className="relative">
             <button
               onClick={() => setShowSortDropdown(!showSortDropdown)}
@@ -231,7 +234,7 @@ export default function AdminFoodsPage() {
             )}
           </div>
 
-          {/* Clear filters */}
+          {/* Nút dọn dẹp: Bấm để huỷ bỏ tất cả bộ lọc hiện hữu */}
           {hasActiveFilters && (
             <button
               onClick={clearFilters}
@@ -244,7 +247,7 @@ export default function AdminFoodsPage() {
         </div>
       )}
 
-      {/* Content */}
+      {/* --- Lưới Nội Dung: Hiển thị giao diện danh sách từng món một --- */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 size={32} className="text-text-muted animate-spin" />
@@ -308,7 +311,7 @@ export default function AdminFoodsPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* --- Thẻ ngầm (Modal): Nó chỉ bật nổi lên trên màn hình khi state modalOpen là true --- */}
       {modalOpen && (
         <FoodFormModal
           food={editFood}

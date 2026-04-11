@@ -40,6 +40,7 @@ const stats = [
 export default function AboutPage() {
   return (
     <div className="min-h-screen">
+      {/* --- Cấu trúc 1: Hero Section (Phần đầu trang mở bài) --- */}
       <section className="relative overflow-hidden luxury-gradient py-24 sm:py-32">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-[400px] h-[400px] bg-gold/5 rounded-full blur-[100px]" />
@@ -57,6 +58,7 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* --- Cấu trúc 2: Section Triết Lý (Danh sách các giá trị cốt lõi) --- */}
       <section className="page-container py-20 sm:py-24">
         <div className="max-w-3xl mx-auto text-center mb-16">
           <div className="gold-line mx-auto mb-6" />
@@ -86,6 +88,7 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* --- Cấu trúc 3: Section Thống kê (Hiển thị các con số nổi bật như Điểm đánh giá, Giao hàng) --- */}
       <section className="bg-white py-20 sm:py-24">
         <div className="page-container">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
@@ -106,6 +109,7 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* --- Cấu trúc 4: Section Lịch sử (Dòng thời gian các cột mốc quan trọng) --- */}
       <section className="page-container py-20 sm:py-24">
         <div className="text-center mb-16">
           <div className="gold-line mx-auto mb-6" />
@@ -137,6 +141,7 @@ export default function AboutPage() {
         </div>
       </section>
 
+      {/* --- Cấu trúc 5: Call To Action (Khu vực kêu gọi hành động điều hướng sang thực đơn) --- */}
       <section className="page-container pb-20 sm:pb-24">
         <div className="luxury-gradient rounded-3xl p-10 sm:p-16 text-center relative overflow-hidden">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
