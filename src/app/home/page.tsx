@@ -4,6 +4,9 @@ import FoodCard from '@/components/food/FoodCard'
 import { ArrowRight, Star } from 'lucide-react'
 import type { Food } from '@/lib/types'
 
+// ISR: 每 60 秒重新验证页面
+export const revalidate = 60
+
 const mockFeatured = [
   {
     id: 'mock-1',

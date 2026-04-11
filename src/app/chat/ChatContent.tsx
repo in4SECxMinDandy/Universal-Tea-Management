@@ -178,6 +178,8 @@ function ChatContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const realtimeFailedRef = useRef(false)
+
   useEffect(() => {
     if (!session?.id) return
 
@@ -200,7 +202,10 @@ function ChatContent() {
       )
       .subscribe((status) => {
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.warn('[Chat] Realtime unavailable, using polling fallback')
+          if (!realtimeFailedRef.current) {
+            realtimeFailedRef.current = true
+            console.warn('[Chat] Realtime unavailable, using polling fallback')
+          }
         }
       })
 
@@ -236,9 +241,11 @@ function ChatContent() {
 
   useEffect(() => {
     if (!session?.id) return
+
+    const pollInterval = 15000 // 15 秒作为备用轮询
     const interval = setInterval(() => {
       if (sessionIdRef.current) fetchMessages(sessionIdRef.current)
-    }, 5000)
+    }, pollInterval)
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, fetchMessages])

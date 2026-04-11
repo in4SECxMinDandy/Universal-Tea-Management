@@ -2,30 +2,22 @@ import type { Metadata } from 'next'
 import './globals.css'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
-import { createClient } from '@/lib/supabase/server'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 export const metadata: Metadata = {
   title: 'universaltea — Trà Sữa & Bánh Ngọt Cao Cấp',
   description: 'Thưởng thức trà sữa thượng hạng và bánh ngọt tinh tế, giao tận nơi',
 }
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  const user = session?.user || null
-
-  let isAdmin = false
-  if (user) {
-    const { data } = await supabase.rpc('has_role', { uid: user.id, role_name: 'STORE_ADMIN' })
-    isAdmin = data === true
-  }
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
       <body>
-        <Header user={user} isAdmin={isAdmin} />
-        <main>{children}</main>
-        <Footer />
+        <AuthProvider>
+          <Header />
+          <main>{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   )

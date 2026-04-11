@@ -1,9 +1,9 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useCallback } from 'react'
 import { Menu, X, MessageCircle, Settings, LogOut, ChevronDown, ShoppingBag } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 const navLinks = [
   { href: '/home', label: 'Trang chủ' },
@@ -11,17 +11,19 @@ const navLinks = [
   { href: '/thuc-pham', label: 'Thực đơn' },
 ]
 
-export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boolean }) {
+export default function Header() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const supabase = createClient()
+  const { user, isAdmin } = useAuth()
   const userRecord = user as { id?: string; email?: string; user_metadata?: { full_name?: string } } | null
 
-  async function handleLogout() {
+  const handleLogout = useCallback(async () => {
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
     await supabase.auth.signOut()
     window.location.href = '/home'
-  }
+  }, [])
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-border-subtle/50 transition-all duration-500">
@@ -129,13 +131,13 @@ export default function Header({ user, isAdmin }: { user: unknown; isAdmin?: boo
                         </Link>
                       )}
                       <div className="border-t border-border-subtle my-1" />
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-accent-red hover:bg-accent-red-light/30 cursor-pointer transition-colors duration-200"
-                      >
-                        <LogOut size={14} />
-                        <span>Đăng xuất</span>
-                      </button>
+                  <button
+                    onClick={() => { setUserMenuOpen(false); handleLogout() }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-accent-red hover:bg-accent-red-light/30 cursor-pointer transition-colors duration-200"
+                  >
+                    <LogOut size={14} />
+                    <span>Đăng xuất</span>
+                  </button>
                     </div>
                   )}
                 </div>
