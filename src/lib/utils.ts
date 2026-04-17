@@ -5,6 +5,36 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+export class TimeoutError extends Error {
+  constructor(message = 'Yeu cau da qua thoi gian cho phep.') {
+    super(message)
+    this.name = 'TimeoutError'
+  }
+}
+
+export function withTimeout<T>(
+  promise: PromiseLike<T>,
+  timeoutMs: number,
+  message = 'Yeu cau da qua thoi gian cho phep.'
+) {
+  return new Promise<T>((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new TimeoutError(message))
+    }, timeoutMs)
+
+    promise.then(
+      (value) => {
+        clearTimeout(timeoutId)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timeoutId)
+        reject(error)
+      }
+    )
+  })
+}
+
 export function formatPrice(price: number): string {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',

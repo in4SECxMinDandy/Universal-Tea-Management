@@ -7,6 +7,7 @@ import { performanceMonitor } from '@/lib/performance/monitor'
 import { queryKeys } from '@/lib/react-query/client'
 import { createClient } from '@/lib/supabase/client'
 import { FOOD_CATEGORY_SELECT_FIELDS } from '@/lib/supabase/selects'
+import { withTimeout } from '@/lib/utils'
 import type { FoodCategory } from '@/lib/types'
 
 type UseCategoriesOptions = {
@@ -33,7 +34,11 @@ export function useCategories(options: UseCategoriesOptions = {}) {
         query = query.eq('is_active', true)
       }
 
-      const { data, error } = await query
+      const { data, error } = await withTimeout(
+        query,
+        8000,
+        'Tai danh muc qua lau. Vui long thu lai.'
+      )
 
       performanceMonitor.trackQueryTime('categories', performance.now() - startedAt)
 

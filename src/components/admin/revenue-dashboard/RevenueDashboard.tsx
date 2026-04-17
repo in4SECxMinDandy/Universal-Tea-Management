@@ -115,7 +115,7 @@ export function RevenueDashboard() {
   }
 
   if (isLoading && !data) {
-    return <DashboardSkeleton />
+    return <RevenueDashboardSkeleton />
   }
 
   if (isError) {
@@ -466,7 +466,7 @@ function LowReviewsPanel({
   )
 }
 
-function DashboardSkeleton() {
+export function RevenueDashboardSkeleton() {
   return (
     <div className="space-y-6">
       <div className="h-72 rounded-[28px] skeleton" />

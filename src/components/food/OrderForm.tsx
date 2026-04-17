@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShoppingCart, Minus, Plus, Loader2 } from 'lucide-react'
+
 import { formatPrice } from '@/lib/utils'
 
 type OrderFormProps = {
@@ -14,16 +15,48 @@ type OrderFormProps = {
   isAdmin?: boolean
 }
 
-export default function OrderForm({ foodId, price, isAvailable, stockQuantity, userId, isAdmin }: OrderFormProps) {
+type OrderMessage = {
+  type: 'success' | 'error'
+  text: string
+}
+
+function mapOrderFailureMessage(errorMessage?: string | null) {
+  if (!errorMessage) {
+    return 'Đặt hàng thất bại. Vui lòng thử lại sau.'
+  }
+
+  if (errorMessage === 'Insufficient stock') {
+    return 'Món này không còn đủ số lượng cho yêu cầu của bạn.'
+  }
+
+  if (errorMessage === 'Food unavailable') {
+    return 'Món này hiện tại không còn sẵn sàng để đặt.'
+  }
+
+  if (errorMessage === 'Unauthorized') {
+    return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+  }
+
+  return errorMessage
+}
+
+export default function OrderForm({
+  foodId,
+  price,
+  isAvailable,
+  stockQuantity,
+  userId,
+  isAdmin,
+}: OrderFormProps) {
   const [quantity, setQuantity] = useState(1)
   const [note, setNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [message, setMessage] = useState<OrderMessage | null>(null)
 
   const router = useRouter()
 
-  const increment = () => setQuantity(prev => (prev < Math.min(99, stockQuantity) ? prev + 1 : prev))
-  const decrement = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1))
+  const increment = () => setQuantity((prev) => (prev < Math.min(99, stockQuantity) ? prev + 1 : prev))
+  const decrement = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1))
 
   const handleOrder = async () => {
     if (!isAvailable) return
@@ -44,21 +77,30 @@ export default function OrderForm({ foodId, price, isAvailable, stockQuantity, u
       const payload = await response.json().catch(() => null)
 
       if (!response.ok) {
-        throw new Error(payload?.error || 'Đặt hàng thất bại.')
+        setMessage({
+          type: 'error',
+          text: mapOrderFailureMessage(payload?.error),
+        })
+        return
       }
 
-      setMessage({ type: 'success', text: 'Đặt hàng thành công! Xem tiến độ tại trang Lịch sử đơn hàng.' })
+      setMessage({
+        type: 'success',
+        text: 'Đặt hàng thành công! Xem tiến độ tại trang Lịch sử đơn hàng.',
+      })
       setQuantity(1)
       setNote('')
     } catch (err: unknown) {
       console.error('Order error:', err)
-      setMessage({ type: 'error', text: 'Đặt hàng thất bại. Vui lòng thử lại sau.' })
+      setMessage({
+        type: 'error',
+        text: mapOrderFailureMessage(err instanceof Error ? err.message : null),
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  // ── Nếu là Admin: Thông báo không thể đặt hàng ──────────────
   if (isAdmin) {
     return (
       <div className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-gradient-to-br from-cream to-white border border-gold/20 shadow-card-base text-center">
@@ -75,7 +117,6 @@ export default function OrderForm({ foodId, price, isAvailable, stockQuantity, u
     )
   }
 
-  // ── Chưa đăng nhập: hiển thị banner mời đăng nhập ──────────────
   if (!userId) {
     return (
       <div className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-gradient-to-br from-cream to-white border border-gold/20 shadow-card-base text-center">
@@ -90,9 +131,7 @@ export default function OrderForm({ foodId, price, isAvailable, stockQuantity, u
         </div>
         <div className="flex gap-3 w-full">
           <button
-            onClick={() =>
-              router.push('/login?redirect=' + encodeURIComponent(window.location.pathname))
-            }
+            onClick={() => router.push('/login?redirect=' + encodeURIComponent(window.location.pathname))}
             className="btn-primary flex-1 flex items-center justify-center gap-2 py-3 rounded-full shadow-button-glow text-sm"
           >
             <ShoppingCart size={16} />
@@ -100,9 +139,7 @@ export default function OrderForm({ foodId, price, isAvailable, stockQuantity, u
           </button>
           <button
             onClick={() =>
-              router.push(
-                '/login?tab=register&redirect=' + encodeURIComponent(window.location.pathname)
-              )
+              router.push('/login?tab=register&redirect=' + encodeURIComponent(window.location.pathname))
             }
             className="btn-secondary flex-1 flex items-center justify-center gap-2 py-3 rounded-full text-sm"
           >
@@ -113,7 +150,6 @@ export default function OrderForm({ foodId, price, isAvailable, stockQuantity, u
     )
   }
 
-  // ── Đã đăng nhập: hiển thị form đặt hàng đầy đủ ────────────────
   return (
     <div className="space-y-6">
       {message && (
@@ -167,7 +203,7 @@ export default function OrderForm({ foodId, price, isAvailable, stockQuantity, u
           </label>
           <textarea
             value={note}
-            onChange={e => setNote(e.target.value)}
+            onChange={(e) => setNote(e.target.value)}
             disabled={isSubmitting}
             placeholder="Nhập ghi chú cho quán..."
             className="w-full input-field resize-none min-h-[80px]"

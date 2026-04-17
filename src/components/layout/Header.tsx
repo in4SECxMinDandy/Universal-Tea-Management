@@ -5,6 +5,7 @@ import { useState, useCallback } from 'react'
 import { Menu, X, MessageCircle, Settings, LogOut, ChevronDown, ShoppingBag } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
+import { withTimeout } from '@/lib/utils'
 
 const navLinks = [
   { href: '/home', label: 'Trang chủ' },
@@ -23,7 +24,7 @@ export default function Header() {
   const handleLogout = useCallback(async () => {
     try {
       // Bắt buộc phải chờ server xóa cookie xong trước khi tải lại trang, nếu không request có thể bị hủy
-      await fetch('/api/auth/logout', { method: 'POST' })
+      await withTimeout(fetch('/api/auth/logout', { method: 'POST' }), 5000, 'Dang xuat qua lau.')
     } catch (err) {
       console.error('Logout API failed', err)
     }
@@ -31,17 +32,13 @@ export default function Header() {
     try {
       // Xóa local session (bỏ qua nếu lỗi IndexedDB)
       const supabase = createClient()
-      await supabase.auth.signOut({ scope: 'local' })
+      await withTimeout(supabase.auth.signOut({ scope: 'local' }), 3000, 'Khong the xoa phien cuc bo.')
     } catch (err) {
       console.error('Local signOut failed', err)
     }
 
     // Buộc trình duyệt tải lại hoàn toàn
-    if (window.location.pathname === '/home') {
-      window.location.reload()
-    } else {
-      window.location.href = '/home'
-    }
+    window.location.assign('/home')
   }, [])
 
   return (

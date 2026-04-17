@@ -52,6 +52,7 @@ function createChainableMock(data: unknown, error?: unknown) {
 // Shared mock state - this will be used by the mock factory
 const sharedMockState = {
   authUser: { id: 'user-123', is_anonymous: false, email: 'test@example.com' },
+  getSessionError: null as Error | null,
   sessionData: {
     id: 'session-123',
     user_id: 'user-123',
@@ -84,6 +85,7 @@ const sharedMockState = {
 // Export for resetting in tests
 export const resetSharedMockState = () => {
   sharedMockState.authUser = { id: 'user-123', is_anonymous: false, email: 'test@example.com' }
+  sharedMockState.getSessionError = null
   sharedMockState.sessionData = {
     id: 'session-123',
     user_id: 'user-123',
@@ -122,9 +124,15 @@ vi.mock('@/lib/supabase/client', () => {
   return {
     createClient: () => ({
       auth: {
-        getSession: async () => ({
-          data: { session: sharedMockState.authUser ? { user: sharedMockState.authUser } : null },
-        }),
+        getSession: async () => {
+          if (sharedMockState.getSessionError) {
+            throw sharedMockState.getSessionError
+          }
+
+          return {
+            data: { session: sharedMockState.authUser ? { user: sharedMockState.authUser } : null },
+          }
+        },
         signInAnonymously: async () => {
           // Update sharedMockState.authUser when signing in anonymously
           sharedMockState.authUser = { id: 'anon-123', is_anonymous: true, email: null }
@@ -246,6 +254,17 @@ describe('ChatContent', () => {
         },
         { timeout: 5000 }
       )
+    })
+
+    it('khong giu spinner vo han khi khoi tao chat loi', async () => {
+      sharedMockState.getSessionError = new Error('Khong the tai phien dang nhap.')
+
+      renderChatContent()
+
+      await waitFor(() => {
+        expect(screen.getByText('Khong the tai khung chat')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Thu lai' })).toBeInTheDocument()
+      })
     })
 
     // NOTE: This test requires visit_token in URL which is difficult to mock per-test

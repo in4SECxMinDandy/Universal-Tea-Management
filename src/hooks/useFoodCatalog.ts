@@ -7,6 +7,7 @@ import { performanceMonitor } from '@/lib/performance/monitor'
 import { queryKeys } from '@/lib/react-query/client'
 import { createClient } from '@/lib/supabase/client'
 import { FOOD_SELECT_FIELDS } from '@/lib/supabase/selects'
+import { withTimeout } from '@/lib/utils'
 import type { Food } from '@/lib/types'
 
 type UseFoodCatalogOptions = {
@@ -56,7 +57,11 @@ export function useFoodCatalog(options: UseFoodCatalogOptions = {}) {
         query = query.order('sort_order', { ascending: true })
       }
 
-      const { data, error } = await query
+      const { data, error } = await withTimeout(
+        query,
+        8000,
+        'Tai thuc don qua lau. Vui long thu lai.'
+      )
 
       performanceMonitor.trackQueryTime('foods', performance.now() - startedAt)
 

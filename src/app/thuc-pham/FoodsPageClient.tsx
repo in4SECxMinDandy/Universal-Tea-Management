@@ -8,9 +8,26 @@ import { useFoodCatalog } from '@/hooks/useFoodCatalog'
 import type { Category, Food } from '@/lib/types'
 
 export default function FoodsPageClient({ categoryId }: { categoryId?: string }) {
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories()
-  const { data: foods = [], isLoading: foodsLoading } = useFoodCatalog({ categoryId })
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    isError: categoriesErrored,
+    error: categoriesError,
+    refetch: refetchCategories,
+  } = useCategories()
+  const {
+    data: foods = [],
+    isLoading: foodsLoading,
+    isError: foodsErrored,
+    error: foodsError,
+    refetch: refetchFoods,
+  } = useFoodCatalog({ categoryId })
   const loading = categoriesLoading || foodsLoading
+  const hasError = categoriesErrored || foodsErrored
+  const errorMessage =
+    (foodsError instanceof Error && foodsError.message) ||
+    (categoriesError instanceof Error && categoriesError.message) ||
+    'Khong the tai thuc don luc nay.'
 
   return (
     <div className="min-h-screen">
@@ -70,6 +87,22 @@ export default function FoodsPageClient({ categoryId }: { categoryId?: string })
             <div className="text-5xl mb-6">🍵</div>
             <h3 className="text-xl font-display font-bold text-primary mb-2">Đang tải thực đơn</h3>
             <p className="text-sm text-text-muted">Chúng tôi đang lấy dữ liệu mới nhất.</p>
+          </div>
+        ) : hasError ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="text-5xl mb-6">!</div>
+            <h3 className="text-xl font-display font-bold text-primary mb-2">Khong the tai thuc don</h3>
+            <p className="text-sm text-text-muted mb-6 max-w-md">{errorMessage}</p>
+            <button
+              type="button"
+              onClick={() => {
+                void refetchCategories()
+                void refetchFoods()
+              }}
+              className="btn-primary text-sm rounded-full px-6"
+            >
+              Thu lai
+            </button>
           </div>
         ) : foods.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

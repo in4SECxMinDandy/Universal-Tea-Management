@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { ADMIN_FOOD_REVIEW_SELECT_FIELDS } from '@/lib/supabase/selects'
 import StarRating from '@/components/reviews/StarRating'
-import { Loader2, MessageSquareReply, RefreshCw, Star } from 'lucide-react'
+import { Loader2, MessageSquareReply, RefreshCw, Star, Trash2 } from 'lucide-react'
 
 type AdminReview = {
   id: string
@@ -33,6 +33,7 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true)
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const loadReviews = useCallback(async () => {
     setLoading(true)
@@ -88,6 +89,41 @@ export default function AdminReviewsPage() {
       alert(err instanceof Error ? err.message : 'Không thể lưu phản hồi.')
     } finally {
       setSavingId(null)
+    }
+  }
+
+  async function deleteReview(review: AdminReview) {
+    if (!confirm(`Xóa đánh giá của ${review.reviewer_name} cho ${review.food?.name ?? 'sản phẩm này'}?`)) {
+      return
+    }
+
+    setDeletingId(review.id)
+
+    try {
+      const response = await fetch('/api/reviews/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          review_id: review.id,
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Không thể xóa đánh giá.')
+      }
+
+      setReviews((prev) => prev.filter((item) => item.id !== review.id))
+      setReplyDrafts((prev) => {
+        const next = { ...prev }
+        delete next[review.id]
+        return next
+      })
+    } catch (err) {
+      console.error('[AdminReviews] Failed to delete review:', err)
+      alert(err instanceof Error ? err.message : 'Không thể xóa đánh giá.')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -169,9 +205,21 @@ export default function AdminReviewsPage() {
                     )}
 
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-primary" htmlFor={`reply-${review.id}`}>
-                        Phản hồi của cửa hàng
-                      </label>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <label className="text-sm font-medium text-primary" htmlFor={`reply-${review.id}`}>
+                          Phản hồi của cửa hàng
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => void deleteReview(review)}
+                          disabled={deletingId === review.id || savingId === review.id}
+                          data-testid="admin-review-delete"
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-accent-red/20 px-4 py-2 text-sm font-medium text-accent-red transition-colors duration-200 hover:bg-accent-red-light/40 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {deletingId === review.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                          <span>{deletingId === review.id ? 'Đang xóa...' : 'Xóa đánh giá'}</span>
+                        </button>
+                      </div>
                       <textarea
                         data-testid="admin-review-reply"
                         id={`reply-${review.id}`}
@@ -189,7 +237,7 @@ export default function AdminReviewsPage() {
                         </span>
                         <button
                           onClick={() => void saveReply(review)}
-                          disabled={savingId === review.id || !replyDraft.trim()}
+                          disabled={savingId === review.id || deletingId === review.id || !replyDraft.trim()}
                           data-testid="admin-review-save"
                           className="btn-primary inline-flex items-center gap-2 disabled:opacity-60"
                         >

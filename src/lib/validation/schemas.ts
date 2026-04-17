@@ -75,9 +75,14 @@ export const reviewReplySchema = z.object({
   reply: z.string().trim().min(1, 'Phan hoi khong duoc de trong.').max(1000, 'Phan hoi toi da 1000 ky tu.'),
 })
 
+export const reviewDeleteSchema = z.object({
+  review_id: z.string().uuid('Danh gia khong hop le.'),
+})
+
 export type ChatMessageInput = z.infer<typeof chatMessageSchema>
 export type ImageUploadInput = z.infer<typeof imageUploadSchema>
 export type LoginInput = z.infer<typeof loginSchema>
 export type OrderCreateInput = z.infer<typeof orderCreateSchema>
 export type ReviewCreateInput = z.infer<typeof reviewCreateSchema>
 export type ReviewReplyInput = z.infer<typeof reviewReplySchema>
+export type ReviewDeleteInput = z.infer<typeof reviewDeleteSchema>

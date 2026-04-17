@@ -39,7 +39,8 @@ export async function middleware(request: NextRequest) {
   // Cập nhật session an toàn thông qua getSession() để cookie được refresh
   const { data: { session } } = await supabase.auth.getSession()
 
-  const { pathname } = request.nextUrl
+  const { pathname, searchParams } = request.nextUrl
+  const hasVisitToken = Boolean(searchParams.get('visit_token'))
 
   // Bảo vệ /admin: redirect về adminlogin nếu chưa đăng nhập
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
@@ -61,6 +62,10 @@ export async function middleware(request: NextRequest) {
 
   // Bảo vệ /history và /chat: redirect về login nếu chưa đăng nhập
   if (pathname.startsWith('/history') || pathname.startsWith('/chat')) {
+    if (pathname.startsWith('/chat') && hasVisitToken) {
+      return supabaseResponse
+    }
+
     if (!session) {
       const loginUrl = new URL(`/login?redirect=${encodeURIComponent(pathname)}`, request.url)
       return NextResponse.redirect(loginUrl)

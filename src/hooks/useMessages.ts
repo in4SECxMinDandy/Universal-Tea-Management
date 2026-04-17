@@ -8,6 +8,7 @@ import { performanceMonitor } from '@/lib/performance/monitor'
 import { MESSAGE_PAGE_SIZE, calculateNextCursor, mergeMessagePages } from '@/lib/pagination/utils'
 import { createClient } from '@/lib/supabase/client'
 import { CHAT_MESSAGE_SELECT_FIELDS } from '@/lib/supabase/selects'
+import { withTimeout } from '@/lib/utils'
 import type { ChatMessage, ChatMessageCursor } from '@/lib/types'
 
 export interface MessagesPage {
@@ -48,7 +49,11 @@ export function useMessages(sessionId: string | null | undefined) {
         )
       }
 
-      const { data, error } = await dbQuery
+      const { data, error } = await withTimeout(
+        dbQuery,
+        8000,
+        'Tai tin nhan qua lau. Vui long thu lai.'
+      )
       performanceMonitor.trackQueryTime('messages', performance.now() - startedAt)
 
       if (error) throw error

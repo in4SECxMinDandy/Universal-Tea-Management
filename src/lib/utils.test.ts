@@ -8,8 +8,12 @@
  * - REFACTOR: Cải thiện code nếu cần
  */
 
-import { describe, it, expect } from 'vitest'
-import { formatPrice, formatTime, cn } from '../lib/utils'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { formatPrice, formatTime, cn, TimeoutError, withTimeout } from '../lib/utils'
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe('utils', () => {
   describe('formatPrice', () => {
@@ -139,6 +143,24 @@ describe('utils', () => {
     it('xử lý chuỗi rỗng nhiều lần', () => {
       const result = cn('', '', 'text-red', '')
       expect(result).toContain('text-red')
+    })
+  })
+
+  describe('withTimeout', () => {
+    it('tra ve ket qua khi promise hoan thanh dung han', async () => {
+      await expect(withTimeout(Promise.resolve('ok'), 1000)).resolves.toBe('ok')
+    })
+
+    it('nem TimeoutError khi promise treo qua han', async () => {
+      vi.useFakeTimers()
+
+      const pendingPromise = new Promise<string>(() => {})
+      const result = withTimeout(pendingPromise, 1000, 'Het gio cho')
+      const assertion = expect(result).rejects.toBeInstanceOf(TimeoutError)
+
+      await vi.advanceTimersByTimeAsync(1000)
+
+      await assertion
     })
   })
 })

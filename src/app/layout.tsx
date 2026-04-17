@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
+import AppShell from '@/components/layout/AppShell'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ReactQueryProvider } from '@/lib/react-query/provider'
 
@@ -16,9 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ReactQueryProvider>
           <AuthProvider>
-            <Header />
-            <main>{children}</main>
-            <Footer />
+            <AppShell>{children}</AppShell>
           </AuthProvider>
         </ReactQueryProvider>
       </body>

@@ -29,6 +29,7 @@ export default function AdminFoodsPage() {
   const [sortBy, setSortBy] = useState<SortOption>('newest')
   const [showSortDropdown, setShowSortDropdown] = useState(false)
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const supabase = createClient()
   const invalidateFoods = useInvalidateFoodCache()
@@ -102,10 +103,28 @@ export default function AdminFoodsPage() {
   // Hỏi xác nhận và tiến hành xoá item món ăn hoàn toàn
   async function handleDelete(id: string) {
     if (!confirm('Bạn có chắc muốn xoá món này?')) return
-    const { error } = await supabase.from('foods').delete().eq('id', id)
-    if (!error) {
+    setDeletingId(id)
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    const { error } = await supabase
+      .from('foods')
+      .update({
+        deleted_at: new Date().toISOString(),
+        is_available: false,
+        updated_by: session?.user?.id ?? null,
+      })
+      .eq('id', id)
+
+    if (error) {
+      alert(error.message)
+    } else {
       await invalidateFoods()
     }
+
+    setDeletingId(null)
   }
 
   // Logic hiển thị Form Modal và gán dữ liệu món đang muốn sửa
@@ -286,9 +305,10 @@ export default function AdminFoodsPage() {
                 </button>
                 <button
                   onClick={() => handleDelete(food.id)}
-                  className="btn-danger flex-1 text-sm py-2"
+                  disabled={deletingId === food.id}
+                  className="btn-danger flex-1 text-sm py-2 disabled:opacity-60"
                 >
-                  Xoá
+                  {deletingId === food.id ? 'Đang xoá...' : 'Xoá'}
                 </button>
               </div>
             </div>

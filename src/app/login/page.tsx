@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { LogIn, UserPlus, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react'
 import { TurnstileBox } from '@/components/auth/TurnstileBox'
 import { useAuth } from '@/contexts/AuthContext'
+import { withTimeout } from '@/lib/utils'
 
 const SUPABASE_CONFIG_ERROR_VI =
   'Chưa cấu hình Supabase: mở file .env.local và đặt NEXT_PUBLIC_SUPABASE_URL (Project URL) cùng NEXT_PUBLIC_SUPABASE_ANON_KEY (anon public key) từ Supabase Dashboard → Settings → API. Sau đó khởi động lại dev server.'
@@ -92,14 +93,18 @@ export default function LoginPage() {
 
     try {
       if (isRegister) {
-        const { data, error } = await supabase.auth.signUp({
-          email: emailTrimmed,
-          password,
-          options: {
-            data: { full_name: fullName },
-            ...(captchaToken ? { captchaToken } : {}),
-          },
-        })
+        const { data, error } = await withTimeout(
+          supabase.auth.signUp({
+            email: emailTrimmed,
+            password,
+            options: {
+              data: { full_name: fullName },
+              ...(captchaToken ? { captchaToken } : {}),
+            },
+          }),
+          10000,
+          'Yeu cau dang ky qua lau. Vui long thu lai.'
+        )
         if (error) throw error
         
         if (data.session) {
@@ -109,11 +114,15 @@ export default function LoginPage() {
           window.location.href = redirect ? `/${redirect}` : '/home'
         } else {
           // Fallback signIn (nếu cần mồi thêm)
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: emailTrimmed,
-            password,
-            ...(captchaToken ? { options: { captchaToken } } : {}),
-          })
+          const { data: signInData, error: signInError } = await withTimeout(
+            supabase.auth.signInWithPassword({
+              email: emailTrimmed,
+              password,
+              ...(captchaToken ? { options: { captchaToken } } : {}),
+            }),
+            10000,
+            'Dang nhap sau dang ky qua lau. Vui long thu lai.'
+          )
           
           if (!signInError && signInData.session) {
             const params = new URLSearchParams(window.location.search)
@@ -125,17 +134,20 @@ export default function LoginPage() {
           }
         }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: emailTrimmed,
-          password,
-          ...(captchaToken ? { options: { captchaToken } } : {}),
-        })
+        const { error } = await withTimeout(
+          supabase.auth.signInWithPassword({
+            email: emailTrimmed,
+            password,
+            ...(captchaToken ? { options: { captchaToken } } : {}),
+          }),
+          10000,
+          'Yeu cau dang nhap qua lau. Vui long thu lai.'
+        )
         if (error) throw error
         const params = new URLSearchParams(window.location.search)
         const redirect = params.get('redirect')
         // Đợi cookie được ghi vào browser trước khi chuyển trang (middleware sẽ check session từ cookie)
-        await new Promise(res => setTimeout(res, 500))
-        window.location.href = redirect ? `/${redirect}` : '/home'
+        window.location.assign(redirect ? `/${redirect}` : '/home')
       }
     } catch (err: unknown) {
       const msg = formatAuthFailureMessage(err)

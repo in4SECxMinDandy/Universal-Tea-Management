@@ -114,10 +114,10 @@ async function setOrderStatus(page: Page, orderId: string, status: 'confirmed' |
   expect(response.status()).toBe(200)
 }
 
-test.describe.serial('Order -> Review -> Admin Reply', () => {
+test.describe.serial('Order -> Review -> Admin Moderation', () => {
   test.skip(!ADMIN_EMAIL || !ADMIN_PASSWORD, 'Missing admin E2E credentials')
 
-  test('user can place order, review it, and see admin reply', async ({ browser }) => {
+  test('user can place order, review it, see admin reply, and handle admin deletion', async ({ browser }) => {
     test.setTimeout(180000)
 
     const userContext = await browser.newContext()
@@ -161,27 +161,52 @@ test.describe.serial('Order -> Review -> Admin Reply', () => {
       await userPage.goto(productPath)
       await expect(userPage.getByText('Mon rat ngon va dong goi on.')).toBeVisible()
 
+      await adminPage.goto('/admin/reviews')
+      const reviewCard = adminPage.locator(`[data-testid="admin-review-card"][data-review-id="${reviewId}"]`)
+      await expect(reviewCard).toBeVisible({ timeout: 30000 })
+      await reviewCard.getByTestId('admin-review-reply').fill('Cam on ban da danh gia. Hen gap lai!')
       const replyResponsePromise = adminPage.waitForResponse((response) =>
         response.url().includes('/api/reviews/reply') && response.request().method() === 'POST'
       )
-      await adminPage.goto('/admin')
-      await adminPage.evaluate(async ({ reviewIdValue }) => {
-        await fetch('/api/reviews/reply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            review_id: reviewIdValue,
-            reply: 'Cam on ban da danh gia. Hen gap lai!',
-          }),
-        })
-      }, { reviewIdValue: reviewId })
+      await reviewCard.getByTestId('admin-review-save').click()
       const replyResponse = await replyResponsePromise
       const replyPayload = await replyResponse.json().catch(() => null)
       console.log('REPLY REVIEW RESPONSE:', replyResponse.status(), JSON.stringify(replyPayload))
       expect(replyResponse.status()).toBe(200)
+      await expect(reviewCard).toContainText('Cam on ban da danh gia. Hen gap lai!')
 
       await userPage.goto(productPath)
       await expect(userPage.getByText('Cam on ban da danh gia. Hen gap lai!')).toBeVisible()
+
+      const deleteResponsePromise = adminPage.waitForResponse((response) =>
+        response.url().includes('/api/reviews/delete') && response.request().method() === 'DELETE'
+      )
+      adminPage.once('dialog', (dialog) => dialog.accept())
+      await reviewCard.getByTestId('admin-review-delete').click()
+      const deleteResponse = await deleteResponsePromise
+      const deletePayload = await deleteResponse.json().catch(() => null)
+      console.log('DELETE REVIEW RESPONSE:', deleteResponse.status(), JSON.stringify(deletePayload))
+      expect(deleteResponse.status()).toBe(200)
+      await expect(reviewCard).toHaveCount(0)
+
+      await userPage.goto(productPath)
+      await expect(userPage.getByText('Mon rat ngon va dong goi on.')).toHaveCount(0)
+      await expect(userPage.getByText('Cam on ban da danh gia. Hen gap lai!')).toHaveCount(0)
+
+      await userPage.goto('/history')
+      const historyCardAfterDelete = userPage.locator(`[data-testid="history-order-card"][data-order-id="${orderId}"]`)
+      await expect(historyCardAfterDelete).toContainText(/Đánh giá món này/i, { timeout: 30000 })
+      await historyCardAfterDelete.getByRole('button', { name: '4 sao' }).click()
+      await historyCardAfterDelete.getByTestId('review-comment').fill('Danh gia lai sau khi admin xoa.')
+      const reviewRecreateResponsePromise = userPage.waitForResponse((response) =>
+        response.url().includes('/api/reviews/create') && response.request().method() === 'POST'
+      )
+      await historyCardAfterDelete.getByTestId('submit-review').click()
+      const reviewRecreateResponse = await reviewRecreateResponsePromise
+      const reviewRecreatePayload = await reviewRecreateResponse.json().catch(() => null)
+      console.log('RECREATE REVIEW RESPONSE:', reviewRecreateResponse.status(), JSON.stringify(reviewRecreatePayload))
+      expect(reviewRecreateResponse.status()).toBe(200)
+      await expect(historyCardAfterDelete).toContainText('Danh gia lai sau khi admin xoa.')
     } finally {
       await adminContext.close().catch(() => {})
       await userContext.close().catch(() => {})

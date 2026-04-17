@@ -46,6 +46,7 @@ export default function FoodFormModal({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setSaved(false)
 
     let imageUrl = form.image_url
 
@@ -81,12 +82,30 @@ export default function FoodFormModal({
     }
 
     if (food) {
-      const { error } = await supabase.from('foods').update(payload).eq('id', food.id)
-      if (error) alert(error.message)
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const { error } = await supabase
+        .from('foods')
+        .update({
+          ...payload,
+          updated_by: session?.user?.id ?? null,
+        })
+        .eq('id', food.id)
+
+      if (error) {
+        alert(error.message)
+        setLoading(false)
+        return
+      }
     } else {
       const { data: { session } } = await supabase.auth.getSession()
       const { error } = await supabase.from('foods').insert({ ...payload, created_by: session?.user?.id })
-      if (error) alert(error.message)
+      if (error) {
+        alert(error.message)
+        setLoading(false)
+        return
+      }
     }
 
     setLoading(false)

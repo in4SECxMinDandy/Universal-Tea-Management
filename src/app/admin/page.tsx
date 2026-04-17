@@ -34,13 +34,16 @@ export default function AdminDashboard() {
 
   async function loadSessions() {
     setSessionsLoading(true)
-    const { data } = await supabase
-      .from('visit_sessions')
-      .select(VISIT_SESSION_SELECT_FIELDS)
-      .order('started_at', { ascending: false })
-      .limit(50)
-    if (data) setSessions(data as unknown as VisitSession[])
-    setSessionsLoading(false)
+    try {
+      const { data } = await supabase
+        .from('visit_sessions')
+        .select(VISIT_SESSION_SELECT_FIELDS)
+        .order('started_at', { ascending: false })
+        .limit(50)
+      if (data) setSessions(data as unknown as VisitSession[])
+    } finally {
+      setSessionsLoading(false)
+    }
   }
 
   useEffect(() => {

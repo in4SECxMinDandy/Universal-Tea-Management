@@ -85,4 +85,41 @@ describe('OrderForm', () => {
     })
     expect(screen.getByText(/đặt hàng thành công/i)).toBeInTheDocument()
   })
+
+  it('shows a friendly stock message without logging an exception', async () => {
+    const user = userEvent.setup()
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            error: 'Insufficient stock',
+          }),
+          {
+            status: 409,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      )
+    )
+
+    render(
+      <OrderForm
+        foodId="food-1"
+        price={25000}
+        isAvailable
+        stockQuantity={10}
+        userId="user-1"
+      />
+    )
+
+    await user.click(screen.getByRole('button', { name: /xác nhận/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/không còn đủ số lượng/i)).toBeInTheDocument()
+    })
+    expect(consoleErrorSpy).not.toHaveBeenCalled()
+  })
 })

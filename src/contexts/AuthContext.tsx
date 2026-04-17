@@ -1,7 +1,8 @@
 'use client'
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import { withTimeout } from '@/lib/utils'
 
 interface AuthContextValue {
   user: User | null
@@ -31,49 +32,73 @@ export function AuthProvider({ children, initialUser, initialAdmin }: AuthProvid
   const [user, setUser] = useState<User | null>(initialUser ?? null)
   const [isAdmin, setIsAdmin] = useState(initialAdmin ?? false)
   const [isLoading, setIsLoading] = useState(initialUser === undefined)
+  const supabase = useMemo(() => createClient(), [])
 
-  const checkAdmin = useCallback(async (userId: string) => {
+  const resolveAdminRole = useCallback(async (userId: string) => {
     try {
-      const supabase = createClient()
-      const { data } = await supabase.rpc('has_role', { uid: userId, role_name: 'STORE_ADMIN' })
-      setIsAdmin(data === true)
+      const { data } = await withTimeout(
+        supabase.rpc('has_role', { uid: userId, role_name: 'STORE_ADMIN' }),
+        4000,
+        'Khong the kiem tra quyen truy cap luc nay.'
+      )
+      return data === true
     } catch {
-      setIsAdmin(false)
+      return false
     }
-  }, [])
+  }, [supabase])
 
   useEffect(() => {
     let mounted = true
 
-    async function init() {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
+    const syncUserState = (nextUser: User | null) => {
       if (!mounted) return
 
-      if (session?.user) {
-        setUser(session.user)
-        await checkAdmin(session.user.id)
-      } else {
-        setUser(null)
+      setUser(nextUser)
+      setIsLoading(false)
+
+      if (!nextUser) {
         setIsAdmin(false)
+        return
       }
-      if (mounted) setIsLoading(false)
+
+      setIsAdmin(false)
+      void resolveAdminRole(nextUser.id).then((adminRole) => {
+        if (mounted) {
+          setIsAdmin(adminRole)
+        }
+      })
     }
 
-    init()
-
-    const { data: { subscription } } = createClient().auth.onAuthStateChange(
-      async (event, session) => {
+    async function init() {
+      try {
+        const {
+          data: { session },
+        } = await withTimeout(
+          supabase.auth.getSession(),
+          5000,
+          'Khong the tai trang thai dang nhap.'
+        )
+        syncUserState(session?.user ?? null)
+      } catch {
         if (!mounted) return
+        setUser(null)
+        setIsAdmin(false)
+        setIsLoading(false)
+      }
+    }
+
+    void init()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!mounted) return
+
         if (event === 'SIGNED_OUT') {
-          setUser(null)
-          setIsAdmin(false)
+          syncUserState(null)
           return
         }
-        if (session?.user) {
-          setUser(session.user)
-          await checkAdmin(session.user.id)
-        }
+
+        syncUserState(session?.user ?? null)
       }
     )
 
@@ -81,24 +106,33 @@ export function AuthProvider({ children, initialUser, initialAdmin }: AuthProvid
       mounted = false
       subscription.unsubscribe()
     }
-  }, [checkAdmin])
+  }, [resolveAdminRole, supabase])
 
   const refreshAuth = useCallback(async () => {
     setIsLoading(true)
     try {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      const {
+        data: { session },
+      } = await withTimeout(
+        supabase.auth.getSession(),
+        5000,
+        'Khong the tai trang thai dang nhap.'
+      )
+
       if (session?.user) {
         setUser(session.user)
-        await checkAdmin(session.user.id)
+        setIsAdmin(await resolveAdminRole(session.user.id))
       } else {
         setUser(null)
         setIsAdmin(false)
       }
+    } catch {
+      setUser(null)
+      setIsAdmin(false)
     } finally {
       setIsLoading(false)
     }
-  }, [checkAdmin])
+  }, [resolveAdminRole, supabase])
 
   return (
     <AuthContext.Provider value={{ user, isAdmin, isLoading, refreshAuth }}>

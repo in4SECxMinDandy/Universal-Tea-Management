@@ -1,10 +1,10 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Settings, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { TurnstileBox } from '@/components/auth/TurnstileBox'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
+import { withTimeout } from '@/lib/utils'
 
 const SUPABASE_CONFIG_ERROR_VI =
   'Chưa cấu hình Supabase: mở file .env.local và cấu hình NEXT_PUBLIC_SUPABASE_URL và NEXT_PUBLIC_SUPABASE_ANON_KEY.'
@@ -27,7 +27,6 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-  const supabase = createClient()
   const { user, isAdmin, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
@@ -65,15 +64,19 @@ export default function AdminLoginPage() {
     }
 
     try {
-      const response = await fetch('/api/auth/login?admin=1', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: emailTrimmed,
-          password,
-          ...(captchaToken ? { captchaToken } : {}),
+      const response = await withTimeout(
+        fetch('/api/auth/login?admin=1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: emailTrimmed,
+            password,
+            ...(captchaToken ? { captchaToken } : {}),
+          }),
         }),
-      })
+        10000,
+        'Yeu cau dang nhap admin qua lau. Vui long thu lai.'
+      )
 
       const payload = await response.json().catch(() => null)
 
@@ -83,22 +86,8 @@ export default function AdminLoginPage() {
         return
       }
 
-      if (payload?.session?.access_token && payload?.session?.refresh_token) {
-        const { error: setSessionError } = await supabase.auth.setSession({
-          access_token: payload.session.access_token,
-          refresh_token: payload.session.refresh_token,
-        })
-
-        if (setSessionError) {
-          setError(setSessionError.message || 'Không thể đồng bộ phiên đăng nhập admin.')
-          setLoading(false)
-          return
-        }
-      }
-
       // Đợi cookie được ghi vào browser trước khi chuyển trang (middleware sẽ check session từ cookie)
-      await new Promise(res => setTimeout(res, 500))
-      window.location.href = '/admin'
+      window.location.assign('/admin')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Đăng nhập thất bại.')
       setLoading(false)

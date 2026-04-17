@@ -14,6 +14,7 @@ import {
   shouldLoadMore,
 } from '@/lib/pagination/utils'
 import { CHAT_SESSION_BASIC_SELECT_FIELDS } from '@/lib/supabase/selects'
+import { TimeoutError, withTimeout } from '@/lib/utils'
 import type { ChatMessage } from '@/lib/types'
 
 interface ChatSession {
@@ -30,6 +31,7 @@ function ChatContent() {
   const [session, setSession] = useState<ChatSession | null>(null)
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
+  const [initError, setInitError] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -55,39 +57,65 @@ function ChatContent() {
     fetchNextPage,
     isFetchingNextPage,
     isLoading: messagesLoading,
+    isError: messagesErrored,
+    error: messagesError,
     refetch: refetchMessages,
   } = useMessages(session?.id)
 
-  useEffect(() => {
-    async function init() {
-      let { data: { session } } = await supabase.auth.getSession()
-      let user = session?.user || null
+  const initChat = useCallback(async () => {
+    setLoading(true)
+    setInitError(null)
+    setInvalidToken(false)
+
+    try {
+      const {
+        data: { session: authSession },
+      } = await withTimeout(
+        supabase.auth.getSession(),
+        5000,
+        'Khong the xac dinh phien dang nhap.'
+      )
+      let user = authSession?.user || null
 
       if (!user) {
-        const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
+        const { data: anonData, error: anonError } = await withTimeout(
+          supabase.auth.signInAnonymously(),
+          5000,
+          'Khong the tao phien chat tam thoi.'
+        )
         if (anonError || !anonData.user) {
-          setLoading(false)
-          return
+          throw anonError ?? new Error('Khong the tao phien chat tam thoi.')
         }
         user = anonData.user
       }
 
-      await supabase
-        .from('profiles')
-        .upsert({ id: user.id, full_name: null }, { onConflict: 'id', ignoreDuplicates: true })
+      const profileResult = await withTimeout(
+        supabase
+          .from('profiles')
+          .upsert({ id: user.id, full_name: null }, { onConflict: 'id', ignoreDuplicates: true }),
+        5000,
+        'Khong the khoi tao ho so chat.'
+      )
+      if (profileResult.error) {
+        throw profileResult.error
+      }
 
       let sessionId: string | null = null
       let resolvedSession: ChatSession | null = null
 
       const savedSessionId = sessionStorage.getItem(SESSION_STORAGE_KEY)
       if (savedSessionId) {
-        const { data: savedChat } = await supabase
-          .from('chat_sessions')
-          .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
-          .eq('id', savedSessionId)
-          .eq('user_id', user.id)
-          .eq('status', 'open')
-          .single()
+        const { data: savedChat } = await withTimeout(
+          supabase
+            .from('chat_sessions')
+            .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
+            .eq('id', savedSessionId)
+            .eq('user_id', user.id)
+            .eq('status', 'open')
+            .single(),
+          5000,
+          'Khong the tai phien chat da luu.'
+        )
         if (savedChat) {
           sessionId = savedChat.id
           resolvedSession = savedChat as unknown as ChatSession
@@ -97,42 +125,55 @@ function ChatContent() {
       }
 
       if (!sessionId && visitToken) {
-        const { data: visitSession } = await supabase
-          .from('visit_sessions')
-          .select('id')
-          .eq('visit_token', visitToken)
-          .eq('is_active', true)
-          .gt('expires_at', new Date().toISOString())
-          .single()
+        const { data: visitSession } = await withTimeout(
+          supabase
+            .from('visit_sessions')
+            .select('id')
+            .eq('visit_token', visitToken)
+            .eq('is_active', true)
+            .gt('expires_at', new Date().toISOString())
+            .single(),
+          5000,
+          'Khong the xac minh ma QR.'
+        )
 
         if (!visitSession) {
           setInvalidToken(true)
-          setLoading(false)
+          setSession(null)
+          sessionIdRef.current = null
           return
         }
 
-        const { data: existingChat } = await supabase
-          .from('chat_sessions')
-          .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
-          .eq('visit_session_id', visitSession.id)
-          .eq('user_id', user.id)
-          .eq('status', 'open')
-          .single()
+        const { data: existingChat } = await withTimeout(
+          supabase
+            .from('chat_sessions')
+            .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
+            .eq('visit_session_id', visitSession.id)
+            .eq('user_id', user.id)
+            .eq('status', 'open')
+            .single(),
+          5000,
+          'Khong the tai phien chat theo ma QR.'
+        )
 
         if (existingChat) {
           sessionId = existingChat.id
           resolvedSession = existingChat as unknown as ChatSession
         } else {
-          const { data: newChat } = await supabase
-            .from('chat_sessions')
-            .insert({
-              user_id: user.id,
-              visit_session_id: visitSession.id,
-              visit_token: visitToken,
-              session_type: 'qr',
-            })
-            .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
-            .single()
+          const { data: newChat } = await withTimeout(
+            supabase
+              .from('chat_sessions')
+              .insert({
+                user_id: user.id,
+                visit_session_id: visitSession.id,
+                visit_token: visitToken,
+                session_type: 'qr',
+              })
+              .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
+              .single(),
+            5000,
+            'Khong the tao phien chat moi.'
+          )
           sessionId = newChat?.id ?? null
           resolvedSession = newChat as unknown as ChatSession ?? null
           if (sessionId && user.is_anonymous) setShowNamePrompt(true)
@@ -140,27 +181,39 @@ function ChatContent() {
       }
 
       if (!sessionId) {
-        const { data: existing } = await supabase
-          .from('chat_sessions')
-          .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
-          .eq('user_id', user.id)
-          .eq('status', 'open')
-          .order('opened_at', { ascending: false })
-          .limit(1)
-          .single()
+        const { data: existing } = await withTimeout(
+          supabase
+            .from('chat_sessions')
+            .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
+            .eq('user_id', user.id)
+            .eq('status', 'open')
+            .order('opened_at', { ascending: false })
+            .limit(1)
+            .single(),
+          5000,
+          'Khong the tai danh sach phien chat.'
+        )
 
         if (existing) {
           sessionId = existing.id
           resolvedSession = existing as unknown as ChatSession
           if (!user.is_anonymous && existing.session_type !== 'account') {
-            await supabase.from('chat_sessions').update({ session_type: 'account' }).eq('id', existing.id)
+            await withTimeout(
+              supabase.from('chat_sessions').update({ session_type: 'account' }).eq('id', existing.id),
+              5000,
+              'Khong the dong bo loai phien chat.'
+            )
           }
         } else if (!visitToken) {
-          const { data: newSessionData } = await supabase
-            .from('chat_sessions')
-            .insert({ user_id: user.id, session_type: 'account' })
-            .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
-            .single()
+          const { data: newSessionData } = await withTimeout(
+            supabase
+              .from('chat_sessions')
+              .insert({ user_id: user.id, session_type: 'account' })
+              .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
+              .single(),
+            5000,
+            'Khong the tao phien chat tai khoan.'
+          )
           if (newSessionData) {
             sessionId = newSessionData.id
             resolvedSession = newSessionData as unknown as ChatSession
@@ -172,12 +225,30 @@ function ChatContent() {
         sessionIdRef.current = sessionId
         sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId)
         setSession(resolvedSession)
+      } else {
+        sessionIdRef.current = null
+        setSession(null)
       }
-
+    } catch (error) {
+      console.error('[Chat] init failed', error)
+      sessionIdRef.current = null
+      setSession(null)
+      setShowNamePrompt(false)
+      setInitError(
+        error instanceof TimeoutError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Khong the tai cuoc tro chuyen luc nay.'
+      )
+    } finally {
       setLoading(false)
     }
-    init()
   }, [supabase, visitToken])
+
+  useEffect(() => {
+    void initChat()
+  }, [initChat])
 
   useEffect(() => {
     if (!session?.id) return
@@ -360,15 +431,19 @@ function ChatContent() {
         }
       }
 
-      const response = await fetch('/api/chat/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          session_id: session.id,
-          content: input.trim() || (uploadedUrl ? '📷 Đã gửi một ảnh' : ''),
-          image_url: uploadedUrl,
+      const response = await withTimeout(
+        fetch('/api/chat/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: session.id,
+            content: input.trim() || (uploadedUrl ? '📷 Đã gửi một ảnh' : ''),
+            image_url: uploadedUrl,
+          }),
         }),
-      })
+        10000,
+        'Gui tin nhan mat qua nhieu thoi gian.'
+      )
 
       const payload = await response.json().catch(() => null)
 
@@ -380,6 +455,12 @@ function ChatContent() {
       setInput('')
       clearImage()
       await refetchMessages()
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Khong the gui tin nhan luc nay.'
+      )
     } finally {
       setSending(false)
     }
@@ -454,6 +535,24 @@ function ChatContent() {
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
         <Loader2 size={32} className="text-text-muted animate-spin" />
         <p className="text-sm text-text-muted">Đang tải cuộc trò chuyện...</p>
+      </div>
+    )
+  }
+
+  if (initError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-4">
+        <div className="w-20 h-20 rounded-2xl bg-accent-red-light flex items-center justify-center mb-4">
+          <MessageCircle size={36} className="text-accent-red" />
+        </div>
+        <h3 className="text-xl font-bold text-primary mb-2">Khong the tai khung chat</h3>
+        <p className="text-sm text-text-muted max-w-sm mb-6">{initError}</p>
+        <div className="flex gap-3">
+          <button onClick={() => void initChat()} className="btn-primary text-sm">
+            Thu lai
+          </button>
+          <a href="/home" className="btn-secondary text-sm">Quay lai trang chu</a>
+        </div>
       </div>
     )
   }
@@ -539,6 +638,20 @@ function ChatContent() {
 
       {/* Khung giao diện chính chứa toàn bộ nội dung chat */}
       <div className="card-base overflow-hidden flex flex-col h-[520px] sm:h-[600px]">
+        {messagesErrored && (
+          <div className="border-b border-border-subtle px-4 py-3 bg-accent-red-light/20 flex items-center justify-between gap-3">
+            <p className="text-xs text-accent-red">
+              {messagesError instanceof Error ? messagesError.message : 'Khong the tai tin nhan. Vui long thu lai.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => void refetchMessages()}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Thu lai
+            </button>
+          </div>
+        )}
         {/* Khu vực cuộn hiển thị lịch sử tin nhắn */}
         <div
           ref={messagesContainerRef}

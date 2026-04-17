@@ -142,6 +142,22 @@ describe('AuthContext', () => {
         expect(getByTestId('user')).toHaveTextContent('no-user')
       })
     })
+
+    it('khong bi treo loading khi getSession nem loi', async () => {
+      mockSupabaseClient.auth.getSession.mockRejectedValue(new Error('network down'))
+      mockSupabaseClient.rpc.mockResolvedValue({ data: false })
+
+      const { getByTestId } = render(
+        React.createElement(AuthProvider, null,
+          React.createElement(TestComponent)
+        )
+      )
+
+      await waitFor(() => {
+        expect(getByTestId('isLoading')).toHaveTextContent('false')
+        expect(getByTestId('user')).toHaveTextContent('no-user')
+      })
+    })
   })
 
   describe('Admin Role Check', () => {
