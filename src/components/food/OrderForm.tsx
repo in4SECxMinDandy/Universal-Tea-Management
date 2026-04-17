@@ -12,7 +12,6 @@ type OrderFormProps = {
   isAvailable: boolean
   stockQuantity: number
   userId: string | null
-  isAdmin?: boolean
 }
 
 type OrderMessage = {
@@ -46,7 +45,6 @@ export default function OrderForm({
   isAvailable,
   stockQuantity,
   userId,
-  isAdmin,
 }: OrderFormProps) {
   const [quantity, setQuantity] = useState(1)
   const [note, setNote] = useState('')
@@ -99,22 +97,6 @@ export default function OrderForm({
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  if (isAdmin) {
-    return (
-      <div className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-gradient-to-br from-cream to-white border border-gold/20 shadow-card-base text-center">
-        <div className="w-12 h-12 rounded-full bg-gold/10 flex items-center justify-center">
-          <ShoppingCart size={22} className="text-gold/50" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-primary mb-1">Chế độ Quản trị viên</p>
-          <p className="text-xs text-text-muted">
-            Tài khoản quản trị viên không được phép đặt hàng. Bạn đang xem với tư cách Admin.
-          </p>
-        </div>
-      </div>
-    )
   }
 
   if (!userId) {

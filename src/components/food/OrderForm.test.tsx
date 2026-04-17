@@ -27,22 +27,6 @@ describe('OrderForm', () => {
     )
   })
 
-  it('blocks admin users from ordering', () => {
-    render(
-      <OrderForm
-        foodId="food-1"
-        price={25000}
-        isAvailable
-        stockQuantity={10}
-        userId="admin-1"
-        isAdmin
-      />
-    )
-
-    expect(screen.getByText('Chế độ Quản trị viên')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /xác nhận/i })).not.toBeInTheDocument()
-  })
-
   it('asks anonymous users to sign in before ordering', () => {
     render(
       <OrderForm

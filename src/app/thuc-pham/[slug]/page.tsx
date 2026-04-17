@@ -32,14 +32,6 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ slu
   }
 
   const { data: { session } } = await supabase.auth.getSession()
-  const isAdmin = session?.user
-    ? (
-        await supabase.rpc('has_role', {
-          uid: session.user.id,
-          role_name: 'STORE_ADMIN',
-        })
-      ).data === true
-    : false
 
   const { data: reviews } = await supabase
     .from('food_reviews')
@@ -155,7 +147,6 @@ export default async function FoodDetailPage({ params }: { params: Promise<{ slu
             isAvailable={normalizedFood.is_available} 
             stockQuantity={normalizedFood.stock_quantity}
             userId={session?.user?.id || null} 
-            isAdmin={isAdmin}
           />
 
           <Link
