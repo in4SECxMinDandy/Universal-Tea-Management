@@ -3,15 +3,16 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Send, Loader2, ImagePlus, X } from 'lucide-react'
 import Image from 'next/image'
-
-interface Message {
-  id: string
-  sender_id: string
-  sender_role: string
-  content: string
-  image_url: string | null
-  created_at: string
-}
+import { VirtualMessageList } from '@/components/chat/VirtualMessageList'
+import { useAdaptivePolling } from '@/hooks/useAdaptivePolling'
+import { useMessages } from '@/hooks/useMessages'
+import { usePerformanceTracking } from '@/hooks/usePerformanceTracking'
+import {
+  calculateScrollOffset,
+  shouldAutoScroll,
+  shouldLoadMore,
+} from '@/lib/pagination/utils'
+import type { ChatMessage } from '@/lib/types'
 
 interface AdminChatPanelProps {
   sessionId: string
@@ -19,33 +20,38 @@ interface AdminChatPanelProps {
   sessionType?: 'qr' | 'account'
   tableLabel?: string | null
   onClose?: () => void
+  onCloseSession?: () => void
 }
 
-export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr', tableLabel, onClose }: AdminChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>([])
+export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr', tableLabel, onClose, onCloseSession }: AdminChatPanelProps) {
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(false)
+  const [realtimeConnected, setRealtimeConnected] = useState(false)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const prevMsgCountRef = useRef(0)
   const isFirstLoadRef = useRef(true)
+  const shouldStickToBottomRef = useRef(true)
+  const pendingPrependScrollRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
   const supabase = createClient()
+  usePerformanceTracking('AdminChatPanel')
 
   // Hàm fetch dữ liệu ổn định để tránh lỗi closure cũ trong các sự kiện realtime
+  const {
+    messages,
+    hasMore,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading,
+    refetch: refetchMessages,
+  } = useMessages(sessionId)
+
   const fetchMessages = useCallback(async () => {
-    const { data: msgs } = await supabase
-      .from('chat_messages')
-      .select()
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: true })
-    if (msgs) setMessages(msgs as unknown as Message[])
-    setLoading(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId])
+    await refetchMessages()
+  }, [refetchMessages])
 
   useEffect(() => {
     fetchMessages()
@@ -53,6 +59,8 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
 
   // Đăng ký realtime với Supabase để nhận tin nhắn mới ngay lập tức
   useEffect(() => {
+    setRealtimeConnected(false)
+
     const channel = supabase
       .channel(`admin-chat-messages-${sessionId}`)
       .on(
@@ -60,17 +68,25 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `session_id=eq.${sessionId}` },
         () => fetchMessages()
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setRealtimeConnected(true)
+          return
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          setRealtimeConnected(false)
+        }
+      })
 
     return () => { supabase.removeChannel(channel) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, fetchMessages])
+  }, [sessionId, fetchMessages, supabase])
 
   // Cơ chế quét (polling) dự phòng mỗi 5s đề phòng kết nối realtime bị ngắt
-  useEffect(() => {
-    const interval = setInterval(() => fetchMessages(), 5000)
-    return () => clearInterval(interval)
-  }, [fetchMessages])
+  useAdaptivePolling({
+    enabled: Boolean(sessionId),
+    realtimeConnected,
+    onPoll: fetchMessages,
+  })
 
   useEffect(() => {
     prevMsgCountRef.current = 0
@@ -80,18 +96,56 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
   useEffect(() => {
     const container = messagesContainerRef.current
     if (!container) return
+    if (pendingPrependScrollRef.current) {
+      const previous = pendingPrependScrollRef.current
+      container.scrollTop = calculateScrollOffset(
+        previous.scrollHeight,
+        container.scrollHeight,
+        previous.scrollTop
+      )
+      pendingPrependScrollRef.current = null
+      prevMsgCountRef.current = messages.length
+      return
+    }
     if (messages.length > prevMsgCountRef.current) {
       if (isFirstLoadRef.current) {
         // Nhảy ngay xuống vị trí cuối cùng khi lần đầu mở phiên chat
         container.scrollTop = container.scrollHeight
         isFirstLoadRef.current = false
-      } else {
+      } else if (shouldStickToBottomRef.current) {
         // Cuộn mượt mà xuống dưới cùng khi có tin nhắn mới
         container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
       }
     }
     prevMsgCountRef.current = messages.length
   }, [messages])
+
+  const loadOlderMessages = useCallback(async () => {
+    const container = messagesContainerRef.current
+    if (!container || !hasMore || isFetchingNextPage) return
+
+    pendingPrependScrollRef.current = {
+      scrollHeight: container.scrollHeight,
+      scrollTop: container.scrollTop,
+    }
+
+    await fetchNextPage()
+  }, [fetchNextPage, hasMore, isFetchingNextPage])
+
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    shouldStickToBottomRef.current = shouldAutoScroll(
+      container.scrollTop,
+      container.scrollHeight,
+      container.clientHeight
+    )
+
+    if (shouldLoadMore(container.scrollTop)) {
+      void loadOlderMessages()
+    }
+  }, [loadOlderMessages])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -116,58 +170,123 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const uploadImage = async (adminId: string): Promise<string | null> => {
+  const uploadImageViaApi = async (): Promise<string | null> => {
     if (!imageFile) return null
+
     setUploadProgress(true)
-    const ext = imageFile.name.split('.').pop()
-    const fileName = `${adminId}/${Date.now()}.${ext}`
-    const { error: uploadError } = await supabase.storage
-      .from('chat-images')
-      .upload(fileName, imageFile, { cacheControl: '3600', upsert: false })
-    setUploadProgress(false)
-    if (uploadError) {
-      console.error('Upload error:', uploadError)
-      alert('Lỗi khi tải ảnh lên, vui lòng thử lại')
-      return null
+
+    try {
+      const formData = new FormData()
+      formData.append('file', imageFile)
+      formData.append('session_id', sessionId)
+
+      const response = await fetch('/api/chat/upload-image', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        alert(payload?.error || 'Lỗi khi tải ảnh lên, vui lòng thử lại')
+        return null
+      }
+
+      return payload?.url ?? null
+    } finally {
+      setUploadProgress(false)
     }
-    const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName)
-    return urlData?.publicUrl ?? null
   }
 
   async function sendMessage() {
     if ((!input.trim() && !imageFile) || sending) return
-    const { data: { session } } = await supabase.auth.getSession()
-    const user = session?.user || null
-    if (!user) return
 
     setSending(true)
     let uploadedUrl: string | null = null
-    if (imageFile) {
-      uploadedUrl = await uploadImage(user.id)
-      if (!uploadedUrl && imageFile) {
-        setSending(false)
+
+    try {
+      if (imageFile) {
+        uploadedUrl = await uploadImageViaApi()
+        if (!uploadedUrl && imageFile) {
+          return
+        }
+      }
+
+      const response = await fetch('/api/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          content: input.trim() || (uploadedUrl ? 'Đã gửi một ảnh' : ''),
+          image_url: uploadedUrl,
+        }),
+      })
+
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        alert(payload?.error || 'Không thể gửi tin nhắn lúc này')
         return
       }
-    }
 
-    const { error: msgError } = await supabase.from('chat_messages').insert({
-      session_id: sessionId,
-      sender_id: user.id,
-      sender_role: 'STORE_ADMIN',
-      content: input.trim() || (uploadedUrl ? 'Đã gửi một ảnh' : ''),
-      image_url: uploadedUrl,
-    })
-
-    if (!msgError) {
       setInput('')
       clearImage()
       // Tải lại tin nhắn ngay lập tức sau khi gửi để cập nhật giao diện (Optimistic update)
       await fetchMessages()
+    } finally {
+      setSending(false)
     }
-    setSending(false)
   }
 
-  if (loading) {
+  const renderMessage = useCallback((msg: ChatMessage, idx: number) => {
+    const isAdmin = msg.sender_role === 'STORE_ADMIN'
+    const showAvatar = idx === 0 || messages[idx - 1]?.sender_role !== msg.sender_role
+
+    return (
+      <div
+        key={msg.id}
+        className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'} animate-fade-in`}
+      >
+        {showAvatar && (
+          <span className={`text-xs font-medium mb-1 ${isAdmin ? 'text-right text-text-muted' : 'text-left text-accent-green'}`}>
+            {isAdmin ? 'Cửa hàng' : (userName || 'Khách hàng')}
+          </span>
+        )}
+        <div
+          className={`
+            max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed
+            ${isAdmin
+              ? 'bg-primary text-white rounded-br-md'
+              : 'bg-white text-primary rounded-bl-md border border-border-subtle shadow-sm'
+            }
+          `}
+        >
+          {msg.image_url && (
+            <div className="mb-2 rounded-xl overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
+              <Image
+                src={msg.image_url}
+                alt="Ảnh đính kèm"
+                width={280}
+                height={180}
+                className="max-w-full h-auto rounded-xl object-cover"
+                style={{ maxHeight: '180px', width: 'auto' }}
+                onClick={() => window.open(msg.image_url!, '_blank')}
+                unoptimized
+              />
+            </div>
+          )}
+          {msg.content && msg.content !== 'Đã gửi một ảnh' && (
+            <p>{msg.content}</p>
+          )}
+          <p className={`text-[10px] mt-1 ${isAdmin ? 'text-white/50' : 'text-text-muted'} text-right`}>
+            {new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+      </div>
+    )
+  }, [messages, userName])
+
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
         <Loader2 size={28} className="text-text-muted animate-spin" />
@@ -204,6 +323,14 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
           </div>
           <p className="text-xs text-accent-green">Đang trò chuyện</p>
         </div>
+        {onCloseSession && (
+          <button
+            onClick={onCloseSession}
+            className="h-8 px-3 rounded-lg text-xs font-medium text-accent-red hover:bg-red-50 border border-red-200 transition-colors duration-150"
+          >
+            Đóng phiên
+          </button>
+        )}
         {onClose && (
           <button
             onClick={onClose}
@@ -216,7 +343,27 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
       </div>
 
       {/* --- Phần nội dung: Khu vực hiển thị danh sách các tin nhắn --- */}
-      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-5 flex flex-col gap-3 bg-gray-50/50">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleMessagesScroll}
+        className="flex-1 overflow-y-auto p-5 flex flex-col gap-3 bg-gray-50/50"
+      >
+        {messages.length > 0 && (
+          <div className="flex justify-center">
+            {hasMore ? (
+              <button
+                type="button"
+                onClick={() => void loadOlderMessages()}
+                disabled={isFetchingNextPage}
+                className="text-xs font-medium text-text-muted hover:text-primary px-3 py-1.5 rounded-full border border-border-subtle bg-white disabled:opacity-60"
+              >
+                {isFetchingNextPage ? 'Đang tải tin cũ...' : 'Tải thêm tin nhắn cũ'}
+              </button>
+            ) : (
+              <span className="text-[11px] text-text-muted">Đã tải toàn bộ tin nhắn</span>
+            )}
+          </div>
+        )}
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <p className="text-sm font-medium text-primary mb-1">Chưa có tin nhắn</p>
@@ -224,7 +371,14 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
           </div>
         )}
 
-        {messages.map((msg, idx) => {
+        {messages.length > 100 ? (
+          <VirtualMessageList
+            messages={messages}
+            scrollParentRef={messagesContainerRef}
+            renderMessage={renderMessage}
+          />
+        ) : (
+          messages.map((msg, idx) => {
           const isAdmin = msg.sender_role === 'STORE_ADMIN'
           const showAvatar = idx === 0 || messages[idx - 1]?.sender_role !== msg.sender_role
 
@@ -270,8 +424,8 @@ export default function AdminChatPanel({ sessionId, userName, sessionType = 'qr'
               </div>
             </div>
           )
-        })}
-        <div />
+          })
+        )}
       </div>
 
       {/* --- Phần Preview Ảnh: Khu vực xem trước ảnh trước khi gửi --- */}

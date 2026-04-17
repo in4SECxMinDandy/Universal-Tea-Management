@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { ShoppingCart, Minus, Plus, Loader2 } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
@@ -22,7 +21,6 @@ export default function OrderForm({ foodId, price, isAvailable, stockQuantity, u
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   const router = useRouter()
-  const supabase = createClient()
 
   const increment = () => setQuantity(prev => (prev < Math.min(99, stockQuantity) ? prev + 1 : prev))
   const decrement = () => setQuantity(prev => (prev > 1 ? prev - 1 : 1))
@@ -34,15 +32,20 @@ export default function OrderForm({ foodId, price, isAvailable, stockQuantity, u
     setMessage(null)
 
     try {
-      const { error } = await supabase.from('orders').insert({
-        user_id: userId,
-        food_id: foodId,
-        quantity,
-        note: note.trim() || null,
-        total_price: price * quantity,
+      const response = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          food_id: foodId,
+          quantity,
+          note: note.trim() || null,
+        }),
       })
+      const payload = await response.json().catch(() => null)
 
-      if (error) throw error
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Đặt hàng thất bại.')
+      }
 
       setMessage({ type: 'success', text: 'Đặt hàng thành công! Xem tiến độ tại trang Lịch sử đơn hàng.' })
       setQuantity(1)
@@ -181,6 +184,7 @@ export default function OrderForm({ foodId, price, isAvailable, stockQuantity, u
       <button
         onClick={handleOrder}
         disabled={!isAvailable || isSubmitting}
+        data-testid="order-submit"
         className="btn-primary w-full flex items-center justify-center gap-2 py-4 rounded-full shadow-button-glow disabled:shadow-none text-base"
       >
         {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <ShoppingCart size={18} />}

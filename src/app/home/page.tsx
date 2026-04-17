@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import FoodCard from '@/components/food/FoodCard'
+import { FOOD_SELECT_FIELDS } from '@/lib/supabase/selects'
 import { ArrowRight, Star } from 'lucide-react'
 import type { Food } from '@/lib/types'
 
@@ -98,7 +99,7 @@ export default async function HomePage() {
   const supabase = await createClient()
   const { data: dbFeatured } = await supabase
     .from('foods')
-    .select('*, category:food_categories(name)')
+    .select(FOOD_SELECT_FIELDS)
     .eq('is_featured', true)
     .eq('is_available', true)
     .is('deleted_at', null)

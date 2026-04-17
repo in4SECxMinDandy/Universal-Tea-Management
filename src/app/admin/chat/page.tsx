@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { CHAT_SESSION_SELECT_FIELDS } from '@/lib/supabase/selects'
 import { MessageCircle, Loader2, X, MessageSquare, Trash2 } from 'lucide-react'
 import AdminChatPanel from '@/components/admin/AdminChatPanel'
 
@@ -28,7 +29,7 @@ export default function AdminChatPage() {
   async function load() {
     const { data } = await supabase
       .from('chat_sessions')
-      .select('*, user:profiles(full_name), visit:visit_sessions(table_label)')
+      .select(CHAT_SESSION_SELECT_FIELDS)
       .order('last_message_at', { ascending: false })
     if (data) setSessions(data as unknown as ChatSession[])
     setLoading(false)
@@ -257,6 +258,7 @@ export default function AdminChatPage() {
               userName={getDisplayName(selectedSession)}
               sessionType={selectedSession.session_type}
               tableLabel={selectedSession.visit?.table_label ?? null}
+              onCloseSession={() => void closeSession(selectedSession.id)}
               onClose={() => { setSelectedSession(null); setMobileShowChat(false) }}
             />
           ) : (

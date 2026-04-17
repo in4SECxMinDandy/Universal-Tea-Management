@@ -1,8 +1,6 @@
 'use client'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { isAuthError } from '@supabase/supabase-js'
-import { useRouter } from 'next/navigation'
 import { Settings, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { TurnstileBox } from '@/components/auth/TurnstileBox'
 
@@ -20,28 +18,6 @@ function isSupabaseEnvPlaceholder(): boolean {
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''
 
-function formatAuthFailureMessage(err: unknown): string {
-  if (!isAuthError(err)) {
-    return err instanceof Error ? err.message : 'Đăng nhập thất bại.'
-  }
-  const code = err.code
-  const status = err.status
-  const raw = err.message
-
-  if (code === 'invalid_credentials' || /invalid login credentials/i.test(raw)) {
-    return 'Email hoặc mật khẩu không đúng.'
-  }
-
-  const hint422 =
-    'Nếu Supabase đã bật CAPTCHA (Authentication → Bot Protection): thêm NEXT_PUBLIC_TURNSTILE_SITE_KEY vào .env.local và khởi động lại dev server, hoặc tắt CAPTCHA tạm thời.'
-
-  if (status === 422) {
-    return `${raw}${raw ? ' — ' : ''}${hint422}`
-  }
-
-  return raw || 'Đăng nhập thất bại.'
-}
-
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -49,8 +25,6 @@ export default function AdminLoginPage() {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-
-  const router = useRouter()
   const supabase = createClient()
 
   const onCaptchaToken = useCallback((t: string | null) => {
@@ -80,30 +54,42 @@ export default function AdminLoginPage() {
     }
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: emailTrimmed,
-        password,
-        ...(captchaToken ? { options: { captchaToken } } : {}),
+      const response = await fetch('/api/auth/login?admin=1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: emailTrimmed,
+          password,
+          ...(captchaToken ? { captchaToken } : {}),
+        }),
       })
 
-      if (signInError) throw signInError
+      const payload = await response.json().catch(() => null)
 
-      // Verify they have admin role right after login attempts
-      const { data: { session } } = await supabase.auth.getSession()
-      const user = session?.user || null
-      if (user) {
-        const { data: hasRole } = await supabase.rpc('has_role', { uid: user.id, role_name: 'STORE_ADMIN' })
-        if (hasRole !== true) {
-          await supabase.auth.signOut()
-          setError('Tài khoản này không có quyền quản trị viên.')
+      if (!response.ok) {
+        setError(payload?.error || 'Đăng nhập thất bại.')
+        setLoading(false)
+        return
+      }
+
+      if (payload?.session?.access_token && payload?.session?.refresh_token) {
+        const { error: setSessionError } = await supabase.auth.setSession({
+          access_token: payload.session.access_token,
+          refresh_token: payload.session.refresh_token,
+        })
+
+        if (setSessionError) {
+          setError(setSessionError.message || 'Không thể đồng bộ phiên đăng nhập admin.')
           setLoading(false)
           return
         }
       }
 
+      // Đợi cookie được ghi vào browser trước khi chuyển trang (middleware sẽ check session từ cookie)
+      await new Promise(res => setTimeout(res, 500))
       window.location.href = '/admin'
     } catch (err: unknown) {
-      setError(formatAuthFailureMessage(err))
+      setError(err instanceof Error ? err.message : 'Đăng nhập thất bại.')
       setLoading(false)
     }
   }

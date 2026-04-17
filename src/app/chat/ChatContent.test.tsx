@@ -9,6 +9,8 @@ import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import React from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { createQueryClient } from '@/lib/react-query/client'
 
 // Mock types
 interface MockMessage {
@@ -32,7 +34,7 @@ interface MockSession {
 function createChainableMock(data: unknown, error?: unknown) {
   const chain: Record<string, (...args: unknown[]) => unknown> = {}
   
-  const methods = ['eq', 'order', 'limit', 'select', 'insert', 'update', 'upsert', 'on', 'subscribe', 'gt', 'neq', 'in', 'is', 'or', 'not']
+  const methods = ['eq', 'order', 'limit', 'select', 'insert', 'update', 'upsert', 'on', 'subscribe', 'gt', 'lt', 'neq', 'in', 'is', 'or', 'not']
   methods.forEach(m => {
     chain[m] = () => createChainableMock(data, error)
   })
@@ -187,6 +189,17 @@ vi.mock('next/image', () => ({
 // Import after mocks are set up
 import ChatContent from './ChatContent'
 
+function renderChatContent() {
+  const queryClient = createQueryClient()
+  return render(
+    React.createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      React.createElement(ChatContent)
+    )
+  )
+}
+
 describe('ChatContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -209,7 +222,7 @@ describe('ChatContent', () => {
   describe('Session Initialization', () => {
     it('hiển thị giao diện chat khi có session', async () => {
       // State is already set up with session by default
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -225,7 +238,7 @@ describe('ChatContent', () => {
       sharedMockState.authUser = null
       sharedMockState.visitSessionValid = false
 
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -242,7 +255,7 @@ describe('ChatContent', () => {
       sharedMockState.authUser = { id: 'user-123', is_anonymous: false, email: 'test@example.com' }
       sharedMockState.invalidToken = true
 
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -267,7 +280,7 @@ describe('ChatContent', () => {
     })
 
     it('hiển thị danh sách tin nhắn', async () => {
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -278,7 +291,7 @@ describe('ChatContent', () => {
     })
 
     it('phân biệt tin nhắn của user và admin bằng giao diện', async () => {
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -292,7 +305,7 @@ describe('ChatContent', () => {
     it('hiển thị empty state khi không có tin nhắn', async () => {
       sharedMockState.messagesData = []
 
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -311,7 +324,7 @@ describe('ChatContent', () => {
         guest_name: null,
       }
 
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -337,7 +350,7 @@ describe('ChatContent', () => {
     })
 
     it('có ô nhập tin nhắn', async () => {
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -348,7 +361,7 @@ describe('ChatContent', () => {
     })
 
     it('có nút gửi tin nhắn', async () => {
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -359,7 +372,7 @@ describe('ChatContent', () => {
     })
 
     it('vô hiệu hóa nút gửi khi input trống', async () => {
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -372,7 +385,7 @@ describe('ChatContent', () => {
     it('cho phép nhập text vào ô tin nhắn', async () => {
       const user = userEvent.setup()
       
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -403,7 +416,7 @@ describe('ChatContent', () => {
 
     // NOTE: This test is skipped due to state pollution issues between test blocks
     it.skip('có nút đính kèm ảnh', async () => {
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -432,7 +445,7 @@ describe('ChatContent', () => {
     })
 
     it('thiết lập realtime subscription khi có session', async () => {
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -443,7 +456,7 @@ describe('ChatContent', () => {
     })
 
     it('cleanup subscription khi unmount', async () => {
-      const { unmount } = render(React.createElement(ChatContent))
+      const { unmount } = renderChatContent()
 
       await waitFor(
         () => {
@@ -476,7 +489,7 @@ describe('ChatContent', () => {
     })
 
     it('hiển thị input khi session tồn tại', async () => {
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {
@@ -506,7 +519,7 @@ describe('ChatContent', () => {
 
     // NOTE: Skipped due to complex initialization flow requiring visitToken in URL
     it.skip('hiển thị prompt nhập tên cho guest user khi có session_type qr', async () => {
-      render(React.createElement(ChatContent))
+      renderChatContent()
 
       await waitFor(
         () => {

@@ -7,8 +7,15 @@ import { RoleGate, AuthGate } from './RoleGate'
 const mockSupabaseClient = {
   auth: {
     getSession: vi.fn(),
+    onAuthStateChange: vi.fn(),
   },
   rpc: vi.fn(),
+}
+
+const mockRouter = {
+  push: vi.fn(),
+  replace: vi.fn(),
+  back: vi.fn(),
 }
 
 vi.mock('@/lib/supabase/client', () => ({
@@ -17,14 +24,19 @@ vi.mock('@/lib/supabase/client', () => ({
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-  }),
+  useRouter: () => mockRouter,
 }))
 
 describe('RoleGate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSupabaseClient.auth.onAuthStateChange.mockReturnValue({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    })
   })
 
   afterEach(() => {
@@ -99,6 +111,13 @@ describe('RoleGate', () => {
 describe('AuthGate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSupabaseClient.auth.onAuthStateChange.mockReturnValue({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    })
   })
 
   afterEach(() => {

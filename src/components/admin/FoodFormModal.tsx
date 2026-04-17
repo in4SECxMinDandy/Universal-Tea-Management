@@ -1,6 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import Image from 'next/image'
 import { X, Upload, Loader2, CheckCircle2 } from 'lucide-react'
 import type { Category, Food } from '@/lib/types'
 
@@ -14,7 +15,7 @@ export default function FoodFormModal({
   food: Food | null
   categories: Category[]
   onClose: () => void
-  onSaved: () => void
+  onSaved: () => void | Promise<void>
 }) {
   const [form, setForm] = useState({
     name: food?.name ?? '',
@@ -31,6 +32,15 @@ export default function FoodFormModal({
   const [uploadProgress, setUploadProgress] = useState(false)
   const [saved, setSaved] = useState(false)
   const supabase = createClient()
+  const previewUrl = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl)
+      }
+    }
+  }, [previewUrl])
 
   // --- Xử lý sự kiện khi ấn Lưu (Submit) form (Hỗ trợ cả tạo mới và cập nhật) ---
   async function handleSubmit(e: React.FormEvent) {
@@ -82,7 +92,7 @@ export default function FoodFormModal({
     setLoading(false)
     setSaved(true)
     setTimeout(() => {
-      onSaved()
+      void onSaved()
     }, 800)
   }
 
@@ -93,7 +103,7 @@ export default function FoodFormModal({
     >
       {/* --- Lớp nền tối (Overlay) cho phép tạo hiệu ứng popup Modal. Tự động đóng nếu click ngoài khung --- */}
       {/* Khung giao diện trung tâm cửa sổ Modal */}
-      <div className="bg-surface-card rounded-2xl shadow-modal w-full max-w-lg max-h-[90vh] overflow-hidden animate-scale-in">
+      <div data-testid="food-form-modal" className="bg-surface-card rounded-2xl shadow-modal w-full max-w-lg max-h-[90vh] overflow-hidden animate-scale-in">
         {/* --- Khu vực Header: Chứa Tiêu đề Popup và Nút đóng --- */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
           <div>
@@ -119,6 +129,7 @@ export default function FoodFormModal({
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Tên món <span className="text-accent-red">*</span></label>
             <input
+              data-testid="food-form-name"
               type="text"
               placeholder="VD: Cơm gà xối mỡ"
               value={form.name}
@@ -132,6 +143,7 @@ export default function FoodFormModal({
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Giá (VNĐ) <span className="text-accent-red">*</span></label>
             <input
+              data-testid="food-form-price"
               type="number"
               placeholder="VD: 45000"
               value={form.price}
@@ -161,6 +173,7 @@ export default function FoodFormModal({
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Mô tả</label>
             <textarea
+              data-testid="food-form-description"
               placeholder="Mô tả ngắn về món ăn..."
               value={form.description}
               onChange={e => setForm({ ...form, description: e.target.value })}
@@ -173,6 +186,7 @@ export default function FoodFormModal({
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-primary">Số lượng tồn kho</label>
             <input
+              data-testid="food-form-stock"
               type="number"
               placeholder="VD: 50"
               value={form.stock_quantity}
@@ -187,6 +201,7 @@ export default function FoodFormModal({
             <label className="flex items-center gap-3 cursor-pointer group">
               <div className="relative">
                 <input
+                  data-testid="food-form-available"
                   type="checkbox"
                   checked={form.is_available}
                   onChange={e => setForm({ ...form, is_available: e.target.checked })}
@@ -209,6 +224,7 @@ export default function FoodFormModal({
             <label className="flex items-center gap-3 cursor-pointer group">
               <div className="relative">
                 <input
+                  data-testid="food-form-featured"
                   type="checkbox"
                   checked={form.is_featured}
                   onChange={e => setForm({ ...form, is_featured: e.target.checked })}
@@ -254,6 +270,7 @@ export default function FoodFormModal({
                 </>
               )}
               <input
+                data-testid="food-form-image"
                 id="food-image-upload"
                 type="file"
                 accept="image/*"
@@ -269,18 +286,22 @@ export default function FoodFormModal({
               <label className="text-sm font-medium text-primary">Xem trước</label>
               {file ? (
                 <div className="relative h-32 rounded-xl overflow-hidden bg-gray-100">
-                  <img
-                    src={URL.createObjectURL(file)}
+                  <Image
+                    src={previewUrl!}
                     alt="preview"
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    unoptimized
                   />
                 </div>
               ) : (
                 <div className="relative h-32 rounded-xl overflow-hidden bg-gray-100">
-                  <img
+                  <Image
                     src={form.image_url}
                     alt="preview"
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    unoptimized
                   />
                 </div>
               )}
@@ -292,6 +313,7 @@ export default function FoodFormModal({
             <button
               type="submit"
               disabled={loading || !form.name || !form.price}
+              data-testid="food-form-submit"
               className="btn-primary flex-1 flex items-center justify-center gap-2"
             >
               {loading ? (

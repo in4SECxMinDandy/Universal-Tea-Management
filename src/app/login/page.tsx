@@ -124,6 +124,8 @@ export default function LoginPage() {
         if (error) throw error
         const params = new URLSearchParams(window.location.search)
         const redirect = params.get('redirect')
+        // Đợi cookie được ghi vào browser trước khi chuyển trang (middleware sẽ check session từ cookie)
+        await new Promise(res => setTimeout(res, 500))
         window.location.href = redirect ? `/${redirect}` : '/home'
       }
     } catch (err: unknown) {

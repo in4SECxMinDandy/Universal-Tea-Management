@@ -1,10 +1,9 @@
 'use client'
-import { RoleGate } from '@/components/auth/RoleGate'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { useEffect, useState } from 'react'
-import { LayoutDashboard, UtensilsCrossed, MessageCircle, Tag, Settings, LogOut, ShoppingBag } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { LayoutDashboard, BarChart3, UtensilsCrossed, MessageCircle, Tag, Settings, LogOut, ShoppingBag, Star } from 'lucide-react'
 
 interface UserProfile {
   id: string
@@ -21,10 +20,11 @@ interface AdminNavItem {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [user, setUser] = useState<UserProfile | null>(null)
   const [openChatCount, setOpenChatCount] = useState(0)
   const [pendingOrderCount, setPendingOrderCount] = useState(0)
+  const [pendingReviewCount, setPendingReviewCount] = useState(0)
   const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
@@ -45,26 +45,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       })
     }
     loadUser()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase stable per component instance
-  }, [])
+  }, [supabase])
 
   useEffect(() => {
     async function loadCounts() {
       const [
         { count: chatCount },
-        { count: orderCount }
+        { count: orderCount },
+        { count: reviewCount }
       ] = await Promise.all([
         supabase
           .from('chat_sessions')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .eq('status', 'open'),
         supabase
           .from('orders')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending')
+          .select('id', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+        supabase
+          .from('food_reviews')
+          .select('id', { count: 'exact', head: true })
+          .is('admin_reply', null)
       ])
       setOpenChatCount(chatCount ?? 0)
       setPendingOrderCount(orderCount ?? 0)
+      setPendingReviewCount(reviewCount ?? 0)
     }
     loadCounts()
 
@@ -76,24 +81,36 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       .channel('admin-layout-order-count')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => { loadCounts() })
       .subscribe()
+    const reviewSub = supabase
+      .channel('admin-layout-review-count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'food_reviews' }, () => { loadCounts() })
+      .subscribe()
     return () => { 
       supabase.removeChannel(chatSub)
       supabase.removeChannel(orderSub)
+      supabase.removeChannel(reviewSub)
     }
-  }, [])
+  }, [supabase])
 
   async function handleSignOut() {
     if (!confirm('Đăng xuất khỏi Admin Panel?')) return
     setLoggingOut(true)
-    await supabase.auth.signOut()
-    window.location.href = '/login'
+    try {
+      await supabase.auth.signOut()
+    } catch(err) {
+      console.error(err)
+    } finally {
+      window.location.href = '/login'
+    }
   }
 
   const adminLinks: AdminNavItem[] = [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/admin/revenue', label: 'Doanh thu', icon: BarChart3 },
     { href: '/admin/orders', label: 'Đơn hàng', icon: ShoppingBag, badge: pendingOrderCount > 0 ? pendingOrderCount : undefined },
     { href: '/admin/foods', label: 'Quản lý món', icon: UtensilsCrossed },
     { href: '/admin/categories', label: 'Phân loại', icon: Tag },
+    { href: '/admin/reviews', label: 'Đánh giá', icon: Star, badge: pendingReviewCount > 0 ? pendingReviewCount : undefined },
     { href: '/admin/chat', label: 'Chat', icon: MessageCircle, badge: openChatCount > 0 ? openChatCount : undefined },
   ]
 
@@ -102,7 +119,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     : (user?.email?.[0] ?? 'A').toUpperCase()
 
   return (
-    <RoleGate role="STORE_ADMIN">
+    <>
       {/* Khung bao bọc toàn bộ bố cục trang quản trị Admin */}
       <div className="flex min-h-screen bg-surface-bg">
         {/* --- Cột Bên Trái: Thanh điều hướng dọc (Sidebar) --- */}
@@ -189,6 +206,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
       </div>
-    </RoleGate>
+    </>
   )
 }

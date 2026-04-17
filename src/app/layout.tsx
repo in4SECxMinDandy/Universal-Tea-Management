@@ -3,6 +3,7 @@ import './globals.css'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ReactQueryProvider } from '@/lib/react-query/provider'
 
 export const metadata: Metadata = {
   title: 'universaltea — Trà Sữa & Bánh Ngọt Cao Cấp',
@@ -13,11 +14,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <body>
-        <AuthProvider>
-          <Header />
-          <main>{children}</main>
-          <Footer />
-        </AuthProvider>
+        <ReactQueryProvider>
+          <AuthProvider>
+            <Header />
+            <main>{children}</main>
+            <Footer />
+          </AuthProvider>
+        </ReactQueryProvider>
       </body>
     </html>
   )

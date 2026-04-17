@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet: CookieOptions[]) {
-          cookiesToSet.forEach(({ name, value, options }) =>
+          cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           )
           supabaseResponse = NextResponse.next({ request })
@@ -31,13 +31,41 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Bỏ qua kiểm tra auth trên các request prefetch của Next.js (cải thiện tốc độ chuyển trang đáng kể)
+  // Bỏ qua kiểm tra auth trên các request prefetch của Next.js
   if (request.headers.get('purpose') === 'prefetch' || request.headers.get('x-middleware-prefetch') === '1') {
     return supabaseResponse
   }
 
   // Cập nhật session an toàn thông qua getSession() để cookie được refresh
-  await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  const { pathname } = request.nextUrl
+
+  // Bảo vệ /admin: redirect về adminlogin nếu chưa đăng nhập
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    if (!session) {
+      const loginUrl = new URL('/adminlogin', request.url)
+      return NextResponse.redirect(loginUrl)
+    }
+
+    const { data: hasRole } = await supabase.rpc('has_role', {
+      uid: session.user.id,
+      role_name: 'STORE_ADMIN',
+    })
+
+    if (hasRole !== true) {
+      const loginUrl = new URL('/adminlogin', request.url)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
+  // Bảo vệ /history và /chat: redirect về login nếu chưa đăng nhập
+  if (pathname.startsWith('/history') || pathname.startsWith('/chat')) {
+    if (!session) {
+      const loginUrl = new URL(`/login?redirect=${encodeURIComponent(pathname)}`, request.url)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
 
   return supabaseResponse
 }

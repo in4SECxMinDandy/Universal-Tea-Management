@@ -1,16 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useCategories, useInvalidateCategoryCache } from '@/hooks/useCategories'
+import { useInvalidateFoodCache } from '@/hooks/useFoodCatalog'
 import { Plus, Tag, Loader2, Pencil, Trash2, X } from 'lucide-react'
-
-interface Category {
-  id: string
-  name: string
-  slug: string
-  sort_order: number
-  is_active: boolean
-  created_at: string
-}
+import type { FoodCategory } from '@/lib/types'
 
 interface CategoryFormData {
   name: string
@@ -38,29 +32,16 @@ function slugify(text: string): string {
 }
 
 export default function AdminCategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
-  const [editCategory, setEditCategory] = useState<Category | null>(null)
+  const [editCategory, setEditCategory] = useState<FoodCategory | null>(null)
   const [form, setForm] = useState<CategoryFormData>(defaultForm)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [nameInput, setNameInput] = useState('')
   const supabase = createClient()
-
-  async function loadCategories() {
-    const { data } = await supabase
-      .from('food_categories')
-      .select('*')
-      .order('sort_order', { ascending: true })
-    if (data) setCategories(data as unknown as Category[])
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    loadCategories()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const invalidateCategories = useInvalidateCategoryCache()
+  const invalidateFoods = useInvalidateFoodCache()
+  const { data: categories = [], isLoading: loading } = useCategories({ activeOnly: false })
 
   function openAdd() {
     setEditCategory(null)
@@ -70,10 +51,15 @@ export default function AdminCategoriesPage() {
     setModalOpen(true)
   }
 
-  function openEdit(cat: Category) {
+  function openEdit(cat: FoodCategory) {
     setEditCategory(cat)
     setNameInput(cat.name)
-    setForm({ name: cat.name, slug: cat.slug, sort_order: cat.sort_order, is_active: cat.is_active })
+    setForm({
+      name: cat.name,
+      slug: cat.slug ?? '',
+      sort_order: cat.sort_order ?? 0,
+      is_active: cat.is_active ?? true,
+    })
     setError('')
     setModalOpen(true)
   }
@@ -112,13 +98,19 @@ export default function AdminCategoriesPage() {
         .update({ name: form.name.trim(), slug: form.slug.trim(), sort_order: form.sort_order, is_active: form.is_active })
         .eq('id', editCategory.id)
       if (err) setError('Lỗi khi cập nhật: ' + err.message)
-      else { closeModal(); loadCategories() }
+      else {
+        closeModal()
+        await Promise.all([invalidateCategories(), invalidateFoods()])
+      }
     } else {
       const { error: err } = await supabase
         .from('food_categories')
         .insert({ name: form.name.trim(), slug: form.slug.trim(), sort_order: form.sort_order, is_active: form.is_active })
       if (err) setError('Lỗi khi tạo: ' + err.message)
-      else { closeModal(); loadCategories() }
+      else {
+        closeModal()
+        await Promise.all([invalidateCategories(), invalidateFoods()])
+      }
     }
     setSaving(false)
   }
@@ -126,13 +118,15 @@ export default function AdminCategoriesPage() {
   async function handleDelete(id: string) {
     if (!confirm('Xoá phân loại này? Các món ăn trong phân loại này sẽ không bị xoá nhưng sẽ không hiển thị.')) return
     const { error: err } = await supabase.from('food_categories').delete().eq('id', id)
-    if (!err) loadCategories()
+    if (!err) {
+      await Promise.all([invalidateCategories(), invalidateFoods()])
+    }
     else alert('Lỗi khi xoá: ' + err.message)
   }
 
-  async function handleToggleActive(cat: Category) {
+  async function handleToggleActive(cat: FoodCategory) {
     await supabase.from('food_categories').update({ is_active: !cat.is_active }).eq('id', cat.id)
-    loadCategories()
+    await Promise.all([invalidateCategories(), invalidateFoods()])
   }
 
   return (

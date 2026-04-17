@@ -2,6 +2,7 @@
 import { QRCodeSVG } from 'qrcode.react'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { VISIT_SESSION_SELECT_FIELDS } from '@/lib/supabase/selects'
 import { nanoid } from 'nanoid'
 import { QrCode, Plus, Loader2, Copy, CheckCircle2, Clock, Trash2, Ban, Activity } from 'lucide-react'
 
@@ -35,7 +36,7 @@ export default function AdminDashboard() {
     setSessionsLoading(true)
     const { data } = await supabase
       .from('visit_sessions')
-      .select('*, admin:profiles!visit_sessions_user_id_fkey(full_name)')
+      .select(VISIT_SESSION_SELECT_FIELDS)
       .order('started_at', { ascending: false })
       .limit(50)
     if (data) setSessions(data as unknown as VisitSession[])

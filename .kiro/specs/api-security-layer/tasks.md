@@ -1,0 +1,198 @@
+# Implementation Plan
+
+- [ ] 1. Write bug condition exploration test
+  - **Property 1: Bug Condition** - Direct Client-Side Database Access Without Server Validation
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate security vulnerabilities exist
+  - **Scoped PBT Approach**: Scope the property to concrete failing cases (malicious inputs, rate limit bypass, invalid file uploads)
+  - Test that client-side code can execute database operations without server-side validation:
+    - Send chat message with SQL injection payload `'; DROP TABLE chat_messages; --`
+    - Send chat message with XSS payload `<script>alert('XSS')</script>`
+    - Send oversized message (10,000 characters)
+    - Upload malicious file (PHP file renamed to `.jpg`)
+    - Perform brute force login (100 attempts in 10 seconds)
+    - Send spam messages (50 messages in 10 seconds)
+  - The test assertions should verify that:
+    - Malicious inputs are NOT rejected (confirming lack of server validation)
+    - Rate limits are NOT enforced (confirming lack of rate limiting)
+    - File validation can be bypassed (confirming client-side only validation)
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the security vulnerabilities exist)
+  - Document counterexamples found to understand root cause:
+    - Which malicious inputs succeeded
+    - How many requests succeeded without rate limiting
+    - Which file types bypassed validation
+  - Mark task complete when test is written, run, and failures are documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7_
+
+- [ ] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Valid Operations Produce Correct Functional Outcomes
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for valid operations:
+    - User sends valid chat message (1-2000 chars) → message appears in chat with timestamp
+    - Admin sends valid chat message → message appears with STORE_ADMIN role
+    - User uploads valid image (JPEG, PNG, GIF, WEBP under 5MB) → image displays in chat
+    - User logs in with correct credentials → authentication succeeds and redirects
+    - Anonymous user with QR code sends message → message succeeds
+    - Real-time subscription receives new messages → messages appear instantly
+  - Write property-based tests capturing observed behavior patterns:
+    - For all valid messages (content length 1-2000, valid session_id), message is stored and displayed
+    - For all valid images (allowed MIME types, size < 5MB), image is uploaded and URL is returned
+    - For all valid login attempts (correct email/password), authentication succeeds
+    - For all valid sessions, real-time updates are received
+    - For all authenticated users, protected routes are accessible
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
+
+- [ ] 3. Implement API Security Layer
+
+  - [ ] 3.1 Create validation schemas and utilities
+    - Create `src/lib/validation/schemas.ts` with Zod schemas:
+      - `chatMessageSchema`: validates session_id (UUID), content (1-2000 chars), image_url (optional URL)
+      - `imageUploadSchema`: validates file instance and session_id
+      - `loginSchema`: validates email (valid email format), password (6-255 chars), captchaToken (optional)
+    - Create `src/lib/validation/fileValidation.ts` with server-side file validation:
+      - Check file size (max 5MB)
+      - Check MIME type (JPEG, PNG, GIF, WEBP only)
+      - Verify file signature (magic bytes) to prevent MIME type spoofing
+      - Return validation result with error message if invalid
+    - _Bug_Condition: isBugCondition(operation) where operation.executionContext == 'CLIENT_SIDE' AND NOT hasServerSideValidation(operation)_
+    - _Expected_Behavior: All inputs validated with Zod schemas, files validated server-side with magic byte checking_
+    - _Preservation: Valid inputs that pass validation produce same functional outcome_
+    - _Requirements: 2.1, 2.2, 2.4, 2.5, 2.7_
+
+  - [ ] 3.2 Create rate limiting middleware
+    - Create `src/lib/middleware/rateLimit.ts` with in-memory rate limiter:
+      - Track request counts per IP address and endpoint
+      - Configurable time window (windowMs) and max requests (maxRequests)
+      - Return success/failure and remaining request count
+      - Clean up expired entries to prevent memory leaks
+    - Use Map to store request counts with reset times
+    - Extract IP from headers (x-forwarded-for, x-real-ip)
+    - _Bug_Condition: isBugCondition(operation) where NOT hasRateLimiting(operation)_
+    - _Expected_Behavior: Rate limits enforced per IP per endpoint (5 login attempts/min, 20 messages/min, 5 uploads/min)_
+    - _Preservation: Valid requests within rate limits succeed normally_
+    - _Requirements: 2.3, 2.6_
+
+  - [ ] 3.3 Create chat send API endpoint
+    - Create `src/app/api/chat/send/route.ts`:
+      - Apply rate limiting (20 messages per minute)
+      - Verify authentication (check session exists)
+      - Validate request body with chatMessageSchema
+      - Verify user has access to session (check session.user_id matches)
+      - Determine sender role (check has_role RPC for STORE_ADMIN)
+      - Insert message into chat_messages table
+      - Return success response with message data
+      - Handle errors with appropriate status codes (400, 401, 403, 429, 500)
+    - _Bug_Condition: isBugCondition(operation) where operation.type == 'INSERT' AND operation.table == 'chat_messages' AND operation.executionContext == 'CLIENT_SIDE'_
+    - _Expected_Behavior: All chat messages routed through validated API endpoint with rate limiting_
+    - _Preservation: Valid messages appear in chat with correct timestamp and sender role_
+    - _Requirements: 2.1, 2.2, 2.5, 2.7, 3.1, 3.2_
+
+  - [ ] 3.4 Create image upload API endpoint
+    - Create `src/app/api/chat/upload-image/route.ts`:
+      - Apply rate limiting (5 uploads per minute)
+      - Verify authentication (check session exists)
+      - Parse multipart form data (file and session_id)
+      - Validate file with validateImageFile (size, MIME type, magic bytes)
+      - Verify user has access to session
+      - Upload to Supabase storage with unique filename
+      - Return public URL
+      - Handle errors with appropriate status codes (400, 401, 403, 429, 500)
+    - _Bug_Condition: isBugCondition(operation) where operation.type == 'UPLOAD' AND operation.executionContext == 'CLIENT_SIDE' AND NOT hasServerSideValidation(operation)_
+    - _Expected_Behavior: All image uploads validated server-side (type, size, content) before storage_
+    - _Preservation: Valid images display correctly in chat interface_
+    - _Requirements: 2.4, 2.5, 2.7, 3.4_
+
+  - [ ] 3.5 Create admin login API endpoint
+    - Create `src/app/api/auth/login/route.ts`:
+      - Apply rate limiting (5 login attempts per minute)
+      - Validate request body with loginSchema
+      - Authenticate with Supabase signInWithPassword
+      - Verify admin role with has_role RPC
+      - Sign out if not admin
+      - Return success response with user data
+      - Handle errors with appropriate status codes (400, 401, 403, 429)
+    - _Bug_Condition: isBugCondition(operation) where operation.type == 'AUTH' AND NOT hasRateLimiting(operation)_
+    - _Expected_Behavior: Login attempts rate limited (max 5 per minute per IP) to prevent brute force_
+    - _Preservation: Valid login with correct credentials succeeds and redirects to admin page_
+    - _Requirements: 2.3, 2.5, 2.6, 2.7, 3.3_
+
+  - [ ] 3.6 Migrate ChatContent.tsx to use API endpoints
+    - Update `src/app/chat/ChatContent.tsx`:
+      - Replace direct `supabase.from('chat_messages').insert()` (line 318) with fetch to `/api/chat/send`
+      - Replace direct image upload (line 289) with fetch to `/api/chat/upload-image`
+      - Create `uploadImageViaAPI` function that sends FormData with file and session_id
+      - Update `sendMessage` function to call API endpoints
+      - Handle API errors and display user-friendly messages
+      - Maintain existing UI state management (sending, uploadProgress)
+    - _Bug_Condition: isBugCondition(operation) where operation.executionContext == 'CLIENT_SIDE' in ChatContent.tsx_
+    - _Expected_Behavior: All database operations routed through API layer_
+    - _Preservation: Chat functionality remains identical for valid inputs (real-time updates, message display)_
+    - _Requirements: 2.1, 2.4, 2.5, 2.7, 3.1, 3.4, 3.6_
+
+  - [ ] 3.7 Migrate AdminChatPanel.tsx to use API endpoints
+    - Update `src/components/admin/AdminChatPanel.tsx`:
+      - Replace direct `supabase.from('chat_messages').insert()` (line 103) with fetch to `/api/chat/send`
+      - Update message sending logic to call API endpoint
+      - Handle API errors and display user-friendly messages
+      - Maintain existing admin UI functionality
+    - _Bug_Condition: isBugCondition(operation) where operation.executionContext == 'CLIENT_SIDE' in AdminChatPanel.tsx_
+    - _Expected_Behavior: Admin messages routed through API with role verification_
+    - _Preservation: Admin chat functionality remains identical (real-time updates, message display)_
+    - _Requirements: 2.2, 2.5, 2.7, 3.2_
+
+  - [ ] 3.8 Migrate adminlogin page to use API endpoint
+    - Update `src/app/adminlogin/page.tsx`:
+      - Replace direct `supabase.auth.signInWithPassword()` (line 72) with fetch to `/api/auth/login`
+      - Update handleSubmit to call API endpoint
+      - Handle rate limit errors (429) with user-friendly message
+      - Handle authentication errors (401, 403) appropriately
+      - Maintain existing redirect logic on success
+    - _Bug_Condition: isBugCondition(operation) where operation.type == 'AUTH' AND NOT hasRateLimiting(operation)_
+    - _Expected_Behavior: Login attempts rate limited and validated server-side_
+    - _Preservation: Valid login succeeds and redirects to admin dashboard_
+    - _Requirements: 2.3, 2.5, 2.6, 2.7, 3.3_
+
+  - [ ] 3.9 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - API Layer Blocks Malicious Inputs and Enforces Rate Limits
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - Verify that:
+      - Malicious inputs (SQL injection, XSS, oversized messages) are rejected with 400 Bad Request
+      - Rate limits are enforced (429 Too Many Requests after threshold)
+      - Invalid file uploads are rejected with 400 Bad Request
+      - Unauthorized requests are rejected with 401 Unauthorized
+    - **EXPECTED OUTCOME**: Test PASSES (confirms security vulnerabilities are fixed)
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7_
+
+  - [ ] 3.10 Verify preservation tests still pass
+    - **Property 2: Preservation** - Valid Operations Produce Correct Functional Outcomes
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - Verify that:
+      - Valid messages are stored and displayed correctly
+      - Valid images are uploaded and displayed correctly
+      - Valid login attempts succeed and redirect appropriately
+      - Real-time updates continue to work
+      - Anonymous users can still send messages after validation
+      - Protected routes remain accessible to authenticated users
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all tests still pass after fix (no regressions)
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8_
+
+- [ ] 4. Checkpoint - Ensure all tests pass
+  - Run all exploration tests and verify they now pass (security vulnerabilities fixed)
+  - Run all preservation tests and verify they still pass (no regressions)
+  - Run unit tests for validation schemas, rate limiting, and file validation
+  - Run integration tests for full chat flow, image upload flow, and admin flow
+  - Verify rate limiting works across multiple users and sessions
+  - Test error handling and recovery scenarios
+  - Ensure all tests pass, ask the user if questions arise

@@ -1,123 +1,224 @@
-# Universal-Tea-Management
+# 🍵 UniTEA — Nền tảng Quản lý Cửa hàng Thực Phẩm & Chat Realtime
 
 ![universaltea Logo](https://cmstest.lottemallwestlakehanoi.vn/storage/tenants/195/727909eb2bc36eb272c37e21458677a184601520.png)
 
-## universaltea - Nền tảng Nâng Tầm Trải Nghiệm Khách Hàng F&B
+## Tổng quan
 
-Giải pháp tối ưu hóa thao tác gọi món, phản hồi và chăm sóc khách hàng dựa trên QR Code, dành riêng cho các mô hình cà phê, trà sữa, và nhà hàng cỡ vừa và nhỏ.
-
-## 🎯 Tầm nhìn dự án
-
-universaltea được thiết kế để giải quyết bài toán giao tiếp giữa khách hàng và nhân viên trong một cửa hàng F&B có diện tích hoặc số luợng bàn lớn. Bằng cách sử dụng mã QR duy nhất cho từng bàn, khách hàng có thể quét để trực tiếp nhắn tin (gọi thêm món, lấy thêm giấy, v.v.) tới nhân viên quản lý mà không cần phải gọi to hay chờ đợi.
-
-Sự khác biệt của universaltea là **chú trọng vào trải nghiệm không rào cản**: Khách hàng không cần tải App, không cần đăng ký tài khoản. Chỉ cần quẹt QR là có thể chat ngay lập tức với cửa hàng theo thời gian thực (Realtime).
+**UniTEA** là một nền tảng quản lý cửa hàng thực phẩm / trà sữa toàn diện, kết hợp hệ thống **đặt món trực tuyến**, **đánh giá sản phẩm**, **quản lý đơn hàng** và **chat realtime** với khách hàng qua mã QR — tất cả trong một giải pháp serverless mạnh mẽ xây dựng trên Next.js 15 và Supabase.
 
 ---
 
-## ✨ Chức năng Cốt lõi & Luồng Người dùng
+## ✨ Tính năng nổi bật
 
-### 1. Dành cho Khách hàng (Trải nghiệm Không ma sát)
+### 🛒 Dành cho Khách hàng
 
-- **Truy cập ẩn danh**: Nhờ tính năng Supabase Anonymous Sign-in, khách hàng quét QR và có ngay một phiên (session) định danh dưới nền hệ thống mà không cần điền bất kỳ thông tin nào.
-- **Chat Realtime**: Nhắn tin với nhân viên và thấy phản hồi ngay lập tức, không cần làm mới trang.
-- **Đình kèm hình ảnh**: Cho phép gửi hình ảnh minh họa (ví dụ: ly nước bị thiếu topping) kích thước lên tới 5MB, xử lý qua Supabase Storage tiên tiến.
-- **Lưu trữ phiên (Session Persistence)**: Giữ thông tin cuộc trò chuyện ngay cả khi vô tình tắt trình duyệt hay reload trang nhờ cơ chế lưu ID trong `sessionStorage`.
-- **Bảo vệ mã QR**: QR code có giới hạn thời gian (mặc định 3 tiếng) nhằm tránh việc mã bị lan truyền ra ngoài ngoài khung giờ khách đang ngồi tại quán.
+| Tính năng | Mô tả |
+|---|---|
+| **Duyệt thực đơn** | Xem sản phẩm theo danh mục, tìm kiếm, sắp xếp theo giá/tên |
+| **Đặt món** | Đặt món kèm ghi chú, xác nhận ngay lập tức qua realtime |
+| **Lịch sử đơn hàng** | Theo dõi trạng thái đơn (pending → confirmed → completed / cancelled) |
+| **Đánh giá sản phẩm** | Đánh giá 1-5 sao kèm bình luận cho đơn đã hoàn thành |
+| **Chat realtime** | Nhắn tin với cửa hàng kèm hình ảnh, phản hồi tức thì |
+| **Đăng nhập ẩn danh** | Không cần tạo tài khoản — quét QR là chat ngay (Supabase Anonymous Sign-in) |
+| **Bảo vệ QR** | Mã QR có giới hạn thời gian (mặc định 3 tiếng) tránh lan truyền ngoài quán |
 
-### 2. Dành cho Nhân viên / Quản lý (Trang Admin Dashboard)
+### 🏪 Dành cho Quản lý / Admin
 
-- **Tạo mã QR tự động**: Quản lý có thể sinh ra mã QR cho từng phiên khách (Ví dụ: "Bàn 15", "Tầng 2 - Góc cửa sổ").
-- **Giao diện phân chia theo màn hình Split-pane**: Giúp nhân viên vừa theo dõi chi tiết danh sách bàn đang có yêu cầu (Panel trái) vừa phản hồi chat chi tiết (Panel phải). Có responsive tốt trên thiết bị di động.
-- **Cảnh báo phiên chờ (Pulse UI)**: Hiển thị nổi bật số lượng phiên chat đang mở cần xử lý.
-- **Chủ động đóng phiên chat**: Nhân viên có thể chốt/đóng kết nối khi đã phục vụ xong, giúp dọn dẹp các yêu cầu cũ khỏi luồng làm việc.
+| Tính năng | Mô tả |
+|---|---|
+| **Dashboard** | Thống kê tổng quan — doanh thu, đơn hàng, phiên hoạt động |
+| **Quản lý món ăn** | CRUD đầy đủ: thêm, sửa, xóa, đánh dấu nổi bật, cập nhật tồn kho |
+| **Quản lý danh mục** | Phân loại món ăn theo danh mục (Trà sữa, Bánh ngọt, v.v.) |
+| **Quản lý đơn hàng** | Cập nhật trạng thái đơn (pending → confirmed → completed / cancelled) |
+| **Quản lý đánh giá** | Xem và phản hồi đánh giá từ khách hàng |
+| **Tạo mã QR** | Sinh mã QR cho từng bàn với nhãn tuỳ chỉnh, quản lý phiên hoạt động |
+| **Panel chat Split-pane** | Vừa theo dõi danh sách phiên vừa phản hồi chat chi tiết |
+| **Bảo mật RLS** | Row Level Security kiểm soát quyền truy cập ở cấp hàng (Row) |
 
 ---
 
 ## 🏛 Kiến trúc Hệ thống
 
-universaltea được phát triển dựa trên **Stack Serverless linh hoạt**:
+```
+Frontend (Next.js 15, React 19, Tailwind CSS 3)
+        │
+        ▼
+  Supabase Platform (Serverless Backend)
+  ┌─────────────────────────────────────────────┐
+  │  PostgreSQL    │  Auth      │  Realtime     │
+  │  Storage (Images) │  RLS (Row Level Security) │
+  └─────────────────────────────────────────────┘
+```
 
-- **Font-end**: [Next.js 15](https://nextjs.org/) (App Router), [React 19](https://react.dev/), [Tailwind CSS 3](https://tailwindcss.com/).
-  - Tối ưu hóa UI/UX với `lucide-react` và các tiện ích như `tailwind-merge`/`clsx`.
-  - Phân quyền trang thông qua Middleware cấp độ Component (`RoleGate`, `AuthGate`).
-- **Back-end Serverless**: [Supabase](https://supabase.com) đảm trách toàn bộ trọng trách backend.
-  - **Database (PostgreSQL)**: Xây dựng các Table (Profiles, Chat Sessions, Chat Messages, Foods).
-  - **Auth**: Cấu hình xác thực với cả dạng Password (cho quản trị) và Anonymous (cho khách hàng).
-  - **Realtime**: Subscription cơ sở dữ liệu `postgres_changes` cho kênh Chat, kết hợp Fallback cơ chế Polling (5s) nếu websocket bị mất kết nối mạng.
-  - **Storage**: Tạo Bucket riêng biệt có định tuyến bảo vệ cấp Table thông qua RLS (Row Level Security).
-  - **Bảo mật RLS Toàn diện**: Áp dụng chặt chẽ cho từng hàng (Row) dựa vào `auth.uid()` hoặc hàm kiểm tra vai trò `has_role()`.
+### Công nghệ sử dụng
+
+| Lớp | Công nghệ |
+|---|---|
+| **Frontend Framework** | Next.js 15 (App Router) |
+| **UI Library** | React 19, Tailwind CSS 3, Lucide React |
+| **Backend** | Supabase (PostgreSQL, Auth, Realtime, Storage) |
+| **State / Data Fetching** | TanStack Query v5 |
+| **Virtualization** | TanStack Virtual (tối ưu danh sách tin nhắn) |
+| **Validation** | Zod |
+| **Testing** | Vitest (unit), Playwright (E2E) |
+| **QR Code** | qrcode.react |
+| **ID Generation** | nanoid |
 
 ---
 
-## 📂 Tổ chức Thư mục & Mã nguồn
+## 📂 Cấu trúc thư mục
 
-```text
-universaltea/
+```
+universal-tea/
 ├── src/
-│   ├── app/                      # Cấu trúc Route theo NextJS App Router
-│   │   ├── admin/                # Phân hệ Admin (Mã QR, Chat Panel, Quản lý món ăn)
-│   │   ├── chat/                 # Phân hệ Nhắn tin (Chứa ChatContent logic mạnh mẽ)
-│   │   ├── login/                # Route đăng nhập
-│   │   ├── ...                   # Các Route tĩnh khác (Trang chủ, v.v)
-│   ├── components/               # Giao diện đóng gói có thể dùng lại
-│   │   ├── admin/                # VD: AdminChatPanel.tsx, FoodFormModal.tsx
-│   │   ├── auth/                 # VD: RoleGate (bảo vệ các component chỉ dành cho Admin)
-│   │   ...
+│   ├── app/                      # Next.js App Router
+│   │   ├── admin/               # Phân hệ Admin
+│   │   │   ├── page.tsx         # Dashboard + QR Generator
+│   │   │   ├── foods/           # Quản lý món ăn
+│   │   │   ├── categories/     # Quản lý danh mục
+│   │   │   ├── orders/          # Quản lý đơn hàng
+│   │   │   ├── reviews/         # Quản lý đánh giá
+│   │   │   ├── revenue/         # Thống kê doanh thu
+│   │   │   ├── chat/            # Panel chat realtime
+│   │   │   └── layout.tsx       # Layout admin (sidebar)
+│   │   ├── home/                # Trang chủ
+│   │   ├── thuc-pham/           # Catalog thực phẩm
+│   │   │   ├── page.tsx         # Danh sách món theo danh mục
+│   │   │   └── [slug]/page.tsx  # Chi tiết sản phẩm
+│   │   ├── chat/                # Giao diện chat khách hàng
+│   │   ├── history/             # Lịch sử đơn hàng & đánh giá
+│   │   ├── login/               # Đăng nhập
+│   │   └── api/                 # API routes (reviews, orders, chat...)
+│   ├── components/
+│   │   ├── admin/               # AdminChatPanel, FoodFormModal...
+│   │   ├── auth/                # RoleGate, AuthGate
+│   │   ├── chat/                # VirtualMessageList
+│   │   ├── food/                # FoodCard, OrderForm
+│   │   ├── layout/              # Header, Footer
+│   │   └── reviews/            # StarRating
+│   ├── hooks/                   # useFoodCatalog, useCategories, useMessages...
 │   ├── lib/
-│   │   └── supabase/             # Logic trích xuất Client Supabase (SSR & Browser)
-│   ├── middleware.ts             # Lớp middleware kiểm tra Auth/Cookie NextJS
+│   │   ├── supabase/            # Client & Server Supabase helpers
+│   │   │   └── selects.ts       # Shared SELECT field lists
+│   │   ├── types.ts             # TypeScript interfaces
+│   │   └── utils.ts             # Helper functions
+│   ├── middleware.ts            # Next.js middleware (auth guard)
+│   └── contexts/               # React contexts
 ├── supabase/
-│   ├── migrations/               # Các script SQL từ v001 tới v009 quy định Schema và RLS
-│   └── config.toml               # Cấu hình Local Supabase CLI
-├── tailwind.config.ts            # Hệ thống design tokens và colors
-└── ...
+│   ├── migrations/              # 021 file SQL migration
+│   └── config.toml              # Supabase CLI config
+├── e2e/                         # Playwright E2E tests
+├── docs/                        # Documentation
+│   ├── performance-indexes.md
+│   └── testing-guide.md
+└── tailwind.config.ts
 ```
 
 ---
 
-## 🛠 Hướng dẫn Triển khai & Phát triển Local
+## 🗄 Database Schema (Supabase PostgreSQL)
 
-### 1. Cài đặt ban đầu
+| Bảng | Mục đích |
+|---|---|
+| `profiles` | Hồ sơ người dùng (full_name, avatar_url, role) |
+| `user_roles` | Vai trò người dùng (STORE_ADMIN, v.v.) |
+| `categories` | Danh mục món ăn |
+| `foods` | Thông tin món ăn (tên, giá, mô tả, hình ảnh, tồn kho, nổi bật...) |
+| `orders` | Đơn đặt hàng (user_id, food_id, quantity, status, total_price...) |
+| `food_reviews` | Đánh giá sản phẩm (rating, comment, admin_reply...) |
+| `chat_sessions` | Phiên chat giữa khách và cửa hàng |
+| `chat_messages` | Tin nhắn trong chat (text, image_url...) |
+| `visit_sessions` | Phiên truy cập QR (visit_token, table_label, expiration...) |
 
-Cần chắc chắn bạn đã có sẵn tài khoản **Supabase** và máy tính có cài **Node.js 18+**, **Supabase CLI**.
+---
+
+## 🚀 Triển khai Local
+
+### Yêu cầu
+
+- Node.js 18+
+- Tài khoản **Supabase** (supabase.com)
+- **Supabase CLI** (`npm install -g supabase`)
+
+### Các bước
 
 ```bash
-# Clone dự án & Cài đặt gói NPM
+# 1. Clone dự án
 git clone https://github.com/in4SECxMinDandy/Universal-Tea-Management.git
 cd Universal-Tea-Management
+
+# 2. Cài đặt dependencies
 npm install
-```
 
-### 2. Thiết lập Supabase Project
-
-1. Tạo một project trên Supabase.com
-2. Ở phần **Authentication -> Configuration -> Providers**, bạn tìm và **BẬT (Enable) "Anonymous Sign-ins"**. (Tính năng sống còn cho QR Code Chat).
-3. Đăng nhập Supabase CLI vào project để đẩy các lược đồ (Schema) lên base mới:
-
-```bash
+# 3. Thiết lập Supabase
 npx supabase login
 npx supabase link --project-ref [YOUR_PROJECT_ID]
+
+# 4. Push database migrations (tự tạo tables, RLS, storage buckets)
 npx supabase db push
-```
 
-*(Thao tác `db push` sẽ tự khởi tạo Tables, RLS, Storage Buckets, Roles và kích hoạt Realtime cho bạn nhờ thư mục `migrations` có sẵn.)*
+# 5. Cấu hình biến môi trường
+cp .env.example .env.local
+# Điền SUPABASE_URL và SUPABASE_ANON_KEY vào .env.local
 
-### 3. Biến môi trường
-
-Đổi tên tệp `.env.example` thành `.env.local` và cài đặt 2 biến số:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://[YOUR_PROJECT_ID].supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=[YOUR_ANON_KEY_HERE]
-```
-
-### 4. Chạy dự án
-
-```bash
+# 6. Chạy development server
 npm run dev
 ```
 
-### 5. Demo
+Truy cập [http://localhost:3000](http://localhost:3000).
+
+### Kích hoạt Anonymous Sign-in
+
+Trên **Supabase Dashboard → Authentication → Providers**, bật **Anonymous Sign-ins** — đây là tính năng sống còn cho hệ thống QR Code Chat.
+
+### Tạo tài khoản Admin
+
+1. Đăng ký tài khoản thông thường trên trang `/login`
+2. Trên **Supabase Dashboard → Table Editor → `user_roles`**, thêm một dòng gán role `STORE_ADMIN` cho tài khoản đó
+3. Đăng nhập lại để truy cập `/admin`
+
+---
+
+## 🧪 Kiểm thử
+
+```bash
+# Unit tests (Vitest)
+npm run test
+
+# Unit tests với UI
+npm run test:ui
+
+# Coverage report
+npm run test:coverage
+
+# E2E tests (Playwright)
+npm run test:e2e
+```
+
+Playwright tests nằm trong thư mục `e2e/` và document trong `docs/testing-guide.md`.
+
+---
+
+## 📊 Các trang chính
+
+| Route | Mô tả |
+|---|---|
+| `/home` | Trang chủ — sản phẩm nổi bật |
+| `/thuc-pham` | Danh sách món ăn theo danh mục |
+| `/thuc-pham/[slug]` | Chi tiết sản phẩm + form đặt hàng |
+| `/history` | Lịch sử đơn hàng + đánh giá |
+| `/chat?visit_token=xxx` | Chat realtime (truy cập qua QR) |
+| `/admin` | Dashboard — tạo QR, quản lý phiên |
+| `/admin/foods` | CRUD món ăn |
+| `/admin/categories` | Quản lý danh mục |
+| `/admin/orders` | Quản lý đơn hàng |
+| `/admin/reviews` | Phản hồi đánh giá khách |
+| `/admin/revenue` | Thống kê doanh thu |
+| `/admin/chat` | Panel chat split-pane |
+
+---
+
+## 🎨 Demo Screenshots
 
 ![Demo 1](https://github.com/user-attachments/assets/bf1863b8-332f-43e0-a769-f54d6a12a3f6)
 ![Demo 2](https://github.com/user-attachments/assets/bf742c56-2e5e-4a3d-8e09-36e552b410e8)
@@ -126,12 +227,8 @@ npm run dev
 ![Demo 5](https://github.com/user-attachments/assets/3d6a9390-c55e-4939-ac94-33cc74c4985f)
 ![Demo 6](https://github.com/user-attachments/assets/016ef7a9-6d0e-43d4-be2d-3bc0073abf3b)
 
-Truy cập hệ thống ở [http://localhost:3000](http://localhost:3000).
-
-*Ghi chú nhỏ: Hãy dùng trình duyệt để Signup một account, sau đó trên Supabase Editor (Web), chèn tay dòng User Profile đó thành Role **`STORE_ADMIN`** thông qua Table `user_roles` để có quyền cao nhất truy cập `/admin`.*
-
 ---
 
 ## 📝 Giấy phép
 
-Được triển khai độc quyền dưới tư cách dự án nội bộ. Vui lòng liên hệ nhóm phát triển trước khi sao chép và thương mại hoá. Thay đổi và phát triển bởi [in4SECxMinDandy].
+Dự án được phát triển nội bộ bởi **in4SECxMinDandy**. Vui lòng liên hệ trước khi sao chép hoặc thương mại hoá.

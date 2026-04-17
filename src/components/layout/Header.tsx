@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useCallback } from 'react'
 import { Menu, X, MessageCircle, Settings, LogOut, ChevronDown, ShoppingBag } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase/client'
 
 const navLinks = [
   { href: '/home', label: 'Trang chủ' },
@@ -19,10 +20,18 @@ export default function Header() {
   const userRecord = user as { id?: string; email?: string; user_metadata?: { full_name?: string } } | null
 
   const handleLogout = useCallback(async () => {
-    const { createClient } = await import('@/lib/supabase/client')
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    window.location.href = '/home'
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+    } catch (error) {
+      console.error('Lỗi khi đăng xuất:', error)
+    } finally {
+      if (window.location.pathname === '/home' || window.location.pathname === '/') {
+        window.location.reload()
+      } else {
+        window.location.href = '/home'
+      }
+    }
   }, [])
 
   return (

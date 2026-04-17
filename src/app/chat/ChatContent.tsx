@@ -1,18 +1,20 @@
 'use client'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import { MessageCircle, Send, ImagePlus, Loader2, X, QrCode, Ban } from 'lucide-react'
 import Image from 'next/image'
-
-interface Message {
-  id: string
-  sender_id: string
-  sender_role: string
-  content: string
-  image_url: string | null
-  created_at: string
-}
+import { VirtualMessageList } from '@/components/chat/VirtualMessageList'
+import { useAdaptivePolling } from '@/hooks/useAdaptivePolling'
+import { useMessages } from '@/hooks/useMessages'
+import { usePerformanceTracking } from '@/hooks/usePerformanceTracking'
+import {
+  calculateScrollOffset,
+  shouldAutoScroll,
+  shouldLoadMore,
+} from '@/lib/pagination/utils'
+import { CHAT_SESSION_BASIC_SELECT_FIELDS } from '@/lib/supabase/selects'
+import type { ChatMessage } from '@/lib/types'
 
 interface ChatSession {
   id: string
@@ -26,7 +28,6 @@ const SESSION_STORAGE_KEY = 'universaltea_chat_session_id'
 
 function ChatContent() {
   const [session, setSession] = useState<ChatSession | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
@@ -36,24 +37,26 @@ function ChatContent() {
   const [invalidToken, setInvalidToken] = useState(false)
   const [showNamePrompt, setShowNamePrompt] = useState(false)
   const [guestNameInput, setGuestNameInput] = useState('')
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const [realtimeConnected, setRealtimeConnected] = useState(false)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const sessionIdRef = useRef<string | null>(null)
   const prevMessageCountRef = useRef<number>(0)
+  const shouldStickToBottomRef = useRef(true)
+  const pendingPrependScrollRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
   const searchParams = useSearchParams()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
+  usePerformanceTracking('ChatContent')
 
   const visitToken = searchParams.get('visit_token')
-
-  const fetchMessages = useCallback(async (sid: string) => {
-    const { data: msgs } = await supabase
-      .from('chat_messages')
-      .select()
-      .eq('session_id', sid)
-      .order('created_at', { ascending: true })
-    if (msgs) setMessages(msgs as unknown as Message[])
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const {
+    messages,
+    hasMore,
+    fetchNextPage,
+    isFetchingNextPage,
+    isLoading: messagesLoading,
+    refetch: refetchMessages,
+  } = useMessages(session?.id)
 
   useEffect(() => {
     async function init() {
@@ -80,7 +83,7 @@ function ChatContent() {
       if (savedSessionId) {
         const { data: savedChat } = await supabase
           .from('chat_sessions')
-          .select()
+          .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
           .eq('id', savedSessionId)
           .eq('user_id', user.id)
           .eq('status', 'open')
@@ -110,7 +113,7 @@ function ChatContent() {
 
         const { data: existingChat } = await supabase
           .from('chat_sessions')
-          .select()
+          .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
           .eq('visit_session_id', visitSession.id)
           .eq('user_id', user.id)
           .eq('status', 'open')
@@ -128,7 +131,7 @@ function ChatContent() {
               visit_token: visitToken,
               session_type: 'qr',
             })
-            .select()
+            .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
             .single()
           sessionId = newChat?.id ?? null
           resolvedSession = newChat as unknown as ChatSession ?? null
@@ -139,7 +142,7 @@ function ChatContent() {
       if (!sessionId) {
         const { data: existing } = await supabase
           .from('chat_sessions')
-          .select()
+          .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
           .eq('user_id', user.id)
           .eq('status', 'open')
           .order('opened_at', { ascending: false })
@@ -156,7 +159,7 @@ function ChatContent() {
           const { data: newSessionData } = await supabase
             .from('chat_sessions')
             .insert({ user_id: user.id, session_type: 'account' })
-            .select()
+            .select(CHAT_SESSION_BASIC_SELECT_FIELDS)
             .single()
           if (newSessionData) {
             sessionId = newSessionData.id
@@ -169,21 +172,18 @@ function ChatContent() {
         sessionIdRef.current = sessionId
         sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId)
         setSession(resolvedSession)
-        await fetchMessages(sessionId)
       }
 
       setLoading(false)
     }
     init()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const realtimeFailedRef = useRef(false)
+  }, [supabase, visitToken])
 
   useEffect(() => {
     if (!session?.id) return
 
     sessionIdRef.current = session.id
+    setRealtimeConnected(false)
 
     const channel = supabase
       .channel(`chat-messages-${session.id}`)
@@ -196,24 +196,25 @@ function ChatContent() {
           filter: `session_id=eq.${session.id}`,
         },
         () => {
-          const sid = sessionIdRef.current
-          if (sid) fetchMessages(sid)
+          void refetchMessages()
         }
       )
       .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setRealtimeConnected(true)
+          return
+        }
+
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          if (!realtimeFailedRef.current) {
-            realtimeFailedRef.current = true
-            console.warn('[Chat] Realtime unavailable, using polling fallback')
-          }
+          setRealtimeConnected(false)
+          console.warn('[Chat] Realtime unavailable, using polling fallback')
         }
       })
 
     return () => {
       supabase.removeChannel(channel)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, fetchMessages])
+  }, [session?.id, refetchMessages, supabase])
 
   useEffect(() => {
     if (!session?.id) return
@@ -237,25 +238,61 @@ function ChatContent() {
     return () => {
       supabase.removeChannel(sessionChannel)
     }
-  }, [session?.id])
+  }, [session?.id, supabase])
+
+  useAdaptivePolling({
+    enabled: Boolean(session?.id),
+    realtimeConnected,
+    onPoll: async () => {
+      await refetchMessages()
+    },
+  })
 
   useEffect(() => {
-    if (!session?.id) return
+    const container = messagesContainerRef.current
+    if (!container) return
 
-    const pollInterval = 15000 // Chu kỳ 15 giây để quét (polling) dự phòng nếu realtime gặp vấn đề
-    const interval = setInterval(() => {
-      if (sessionIdRef.current) fetchMessages(sessionIdRef.current)
-    }, pollInterval)
-    return () => clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, fetchMessages])
-
-  useEffect(() => {
-    if (messages.length > prevMessageCountRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (pendingPrependScrollRef.current) {
+      const previous = pendingPrependScrollRef.current
+      container.scrollTop = calculateScrollOffset(
+        previous.scrollHeight,
+        container.scrollHeight,
+        previous.scrollTop
+      )
+      pendingPrependScrollRef.current = null
+    } else if (messages.length > prevMessageCountRef.current && shouldStickToBottomRef.current) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
     }
+
     prevMessageCountRef.current = messages.length
   }, [messages])
+
+  const loadOlderMessages = useCallback(async () => {
+    const container = messagesContainerRef.current
+    if (!container || !hasMore || isFetchingNextPage) return
+
+    pendingPrependScrollRef.current = {
+      scrollHeight: container.scrollHeight,
+      scrollTop: container.scrollTop,
+    }
+
+    await fetchNextPage()
+  }, [fetchNextPage, hasMore, isFetchingNextPage])
+
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    shouldStickToBottomRef.current = shouldAutoScroll(
+      container.scrollTop,
+      container.scrollHeight,
+      container.clientHeight
+    )
+
+    if (shouldLoadMore(container.scrollTop)) {
+      void loadOlderMessages()
+    }
+  }, [loadOlderMessages])
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -281,54 +318,71 @@ function ChatContent() {
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const uploadImage = async (userId: string): Promise<string | null> => {
+  const uploadImageViaApi = async (chatSessionId: string): Promise<string | null> => {
     if (!imageFile) return null
+
     setUploadProgress(true)
-    const ext = imageFile.name.split('.').pop()
-    const fileName = `${userId}/${Date.now()}.${ext}`
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('chat-images')
-      .upload(fileName, imageFile, { cacheControl: '3600', upsert: false })
-    setUploadProgress(false)
-    if (uploadError || !uploadData) {
-      console.error('Upload error:', uploadError)
-      alert('Lỗi khi tải ảnh lên, vui lòng thử lại')
-      return null
+
+    try {
+      const formData = new FormData()
+      formData.append('file', imageFile)
+      formData.append('session_id', chatSessionId)
+
+      const response = await fetch('/api/chat/upload-image', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        alert(payload?.error || 'Lỗi khi tải ảnh lên, vui lòng thử lại')
+        return null
+      }
+
+      return payload?.url ?? null
+    } finally {
+      setUploadProgress(false)
     }
-    const { data: urlData } = supabase.storage.from('chat-images').getPublicUrl(fileName)
-    return urlData?.publicUrl ?? null
   }
 
   async function sendMessage() {
     if ((!input.trim() && !imageFile) || !session || sending) return
-    const { data: { session: authSession } } = await supabase.auth.getSession()
-    const user = authSession?.user || null
-    if (!user) return
 
     setSending(true)
     let uploadedUrl: string | null = null
-    if (imageFile) {
-      uploadedUrl = await uploadImage(user.id)
-      if (!uploadedUrl && imageFile) {
-        setSending(false)
+
+    try {
+      if (imageFile) {
+        uploadedUrl = await uploadImageViaApi(session.id)
+        if (!uploadedUrl && imageFile) {
+          return
+        }
+      }
+
+      const response = await fetch('/api/chat/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: session.id,
+          content: input.trim() || (uploadedUrl ? '📷 Đã gửi một ảnh' : ''),
+          image_url: uploadedUrl,
+        }),
+      })
+
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        alert(payload?.error || 'Không thể gửi tin nhắn lúc này')
         return
       }
-    }
 
-    const { error: msgError } = await supabase.from('chat_messages').insert({
-      session_id: session.id,
-      sender_id: user.id,
-      sender_role: 'USER',
-      content: input.trim() || (uploadedUrl ? '📷 Đã gửi một ảnh' : ''),
-      image_url: uploadedUrl,
-    })
-
-    if (!msgError) {
       setInput('')
       clearImage()
-      await fetchMessages(session.id)
+      await refetchMessages()
+    } finally {
+      setSending(false)
     }
-    setSending(false)
   }
 
   async function saveGuestName(name: string) {
@@ -343,6 +397,57 @@ function ChatContent() {
     }
     setShowNamePrompt(false)
   }
+
+  const renderMessage = useCallback((msg: ChatMessage, idx: number) => {
+    const isOwn = msg.sender_role === 'USER'
+    const showAvatar = idx === 0 || messages[idx - 1]?.sender_role !== msg.sender_role
+
+    return (
+      <div
+        key={msg.id}
+        className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} animate-fade-in`}
+      >
+        {showAvatar && (
+          <span className={`text-xs font-medium mb-1 ${isOwn ? 'text-right text-text-muted' : 'text-left text-accent-green'}`}>
+            {isOwn ? 'Bạn' : 'Cửa hàng'}
+          </span>
+        )}
+        <div
+          className={`
+            max-w-[80%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed
+            ${isOwn
+              ? 'bg-primary text-white rounded-br-md'
+              : 'bg-gray-100 text-primary rounded-bl-md'
+            }
+          `}
+        >
+          {msg.image_url && (
+            <div className="mb-2 rounded-xl overflow-hidden">
+              <Image
+                src={msg.image_url}
+                alt="Ảnh đính kèm"
+                width={300}
+                height={200}
+                className="max-w-full h-auto rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ maxHeight: '200px', width: 'auto' }}
+                onClick={() => window.open(msg.image_url!, '_blank')}
+                unoptimized
+              />
+            </div>
+          )}
+          {msg.content && msg.content !== '📷 Đã gửi một ảnh' && (
+            <p>{msg.content}</p>
+          )}
+          {msg.content === '📷 Đã gửi một ảnh' && !msg.image_url && (
+            <p>{msg.content}</p>
+          )}
+          <p className={`text-[10px] mt-1 ${isOwn ? 'text-white/50' : 'text-text-muted'} text-right`}>
+            {new Date(msg.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+      </div>
+    )
+  }, [messages])
 
   if (loading) {
     return (
@@ -435,8 +540,36 @@ function ChatContent() {
       {/* Khung giao diện chính chứa toàn bộ nội dung chat */}
       <div className="card-base overflow-hidden flex flex-col h-[520px] sm:h-[600px]">
         {/* Khu vực cuộn hiển thị lịch sử tin nhắn */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-4 scrollbar-hide">
-          {messages.length === 0 && (
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleMessagesScroll}
+          className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-4 scrollbar-hide"
+        >
+          {messages.length > 0 && (
+            <div className="flex justify-center">
+              {hasMore ? (
+                <button
+                  type="button"
+                  onClick={() => void loadOlderMessages()}
+                  disabled={isFetchingNextPage}
+                  className="text-xs font-medium text-text-muted hover:text-primary px-3 py-1.5 rounded-full border border-border-subtle bg-white disabled:opacity-60"
+                >
+                  {isFetchingNextPage ? 'Đang tải tin cũ...' : 'Tải thêm tin nhắn cũ'}
+                </button>
+              ) : (
+                <span className="text-[11px] text-text-muted">Đã tải toàn bộ tin nhắn</span>
+              )}
+            </div>
+          )}
+
+          {messagesLoading && (
+            <div className="flex items-center justify-center h-full text-sm text-text-muted">
+              <Loader2 size={18} className="animate-spin mr-2" />
+              Đang tải tin nhắn...
+            </div>
+          )}
+
+          {!messagesLoading && messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
                 <MessageCircle size={24} className="text-text-muted" />
@@ -446,7 +579,14 @@ function ChatContent() {
             </div>
           )}
 
-          {messages.map((msg, idx) => {
+          {!messagesLoading && messages.length > 100 ? (
+            <VirtualMessageList
+              messages={messages}
+              scrollParentRef={messagesContainerRef}
+              renderMessage={renderMessage}
+            />
+          ) : (
+            messages.map((msg, idx) => {
             const isOwn = msg.sender_role === 'USER'
             const showAvatar = idx === 0 || messages[idx - 1]?.sender_role !== msg.sender_role
 
@@ -495,8 +635,8 @@ function ChatContent() {
                 </div>
               </div>
             )
-          })}
-          <div ref={bottomRef} />
+            })
+          )}
         </div>
 
         {/* Khung xem trước ảnh tải lên (nếu có) */}

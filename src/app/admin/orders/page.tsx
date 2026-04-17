@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatTime, formatPrice } from '@/lib/utils'
 import { ShoppingBag, Loader2, CheckCircle2, XCircle, Clock, Search } from 'lucide-react'
@@ -33,23 +33,9 @@ export default function AdminOrdersPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all')
   const [processingId, setProcessingId] = useState<string | null>(null)
 
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
 
-  useEffect(() => {
-    fetchOrders()
-
-    const channel = supabase.channel('admin-orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchOrders()
-      })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
-
-  async function fetchOrders() {
+  const fetchOrders = useCallback(async () => {
     // We cannot easily join auth.users via postgREST, but we can join profiles if they share the foreign key id.
     // Let's fetch orders and manually map profiles if needed, or try the postgREST join.
     setLoading(true)
@@ -66,7 +52,21 @@ export default function AdminOrdersPage() {
       setOrders(data as unknown as Order[])
     }
     setLoading(false)
-  }
+  }, [supabase])
+
+  useEffect(() => {
+    fetchOrders()
+
+    const channel = supabase.channel('admin-orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchOrders()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [fetchOrders, supabase])
 
   async function updateOrderStatus(id: string, newStatus: Order['status']) {
     setProcessingId(id)
@@ -145,7 +145,7 @@ export default function AdminOrdersPage() {
           </div>
         ) : (
           filteredOrders.map(order => (
-            <div key={order.id} className="card-base p-6 flex flex-col md:flex-row gap-6 items-start md:items-center">
+            <div key={order.id} data-testid="admin-order-card" data-order-id={order.id} className="card-base p-6 flex flex-col md:flex-row gap-6 items-start md:items-center">
               {/* Info section */}
               <div className="flex-1 space-y-3">
                 <div className="flex items-center gap-3">
@@ -189,6 +189,7 @@ export default function AdminOrdersPage() {
                     <button
                       onClick={() => updateOrderStatus(order.id, 'cancelled')}
                       disabled={processingId === order.id}
+                      data-testid="admin-order-cancel"
                       className="btn-secondary px-4 py-2 border-accent-red/20 text-accent-red hover:bg-accent-red-light/30"
                     >
                       Từ chối
@@ -196,6 +197,7 @@ export default function AdminOrdersPage() {
                     <button
                       onClick={() => updateOrderStatus(order.id, 'confirmed')}
                       disabled={processingId === order.id}
+                      data-testid="admin-order-confirm"
                       className="btn-primary px-4 py-2 flex items-center gap-2"
                     >
                       {processingId === order.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
@@ -209,6 +211,7 @@ export default function AdminOrdersPage() {
                     <button
                       onClick={() => updateOrderStatus(order.id, 'completed')}
                       disabled={processingId === order.id}
+                      data-testid="admin-order-complete"
                       className="btn-primary bg-accent-green hover:bg-accent-green-dark shadow-accent-green/20 px-4 py-2 flex items-center gap-2"
                     >
                       {processingId === order.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}

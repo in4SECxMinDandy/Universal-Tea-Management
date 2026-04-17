@@ -37,6 +37,8 @@ const stats = [
   { icon: Award, value: '50+', label: 'Món trong thực đơn' },
 ]
 
+import Link from 'next/link'
+
 export default function AboutPage() {
   return (
     <div className="min-h-screen">
@@ -154,12 +156,12 @@ export default function AboutPage() {
             <p className="text-white/50 mb-8 max-w-md mx-auto">
               Khám phá thực đơn phong phú của universaltea ngay hôm nay
             </p>
-            <a
+            <Link
               href="/thuc-pham"
               className="btn-primary inline-flex items-center gap-2 rounded-full px-8 py-4 text-base"
             >
               Xem thực đơn
-            </a>
+            </Link>
           </div>
         </div>
       </section>

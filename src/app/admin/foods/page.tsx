@@ -3,6 +3,8 @@ import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import FoodCard from '@/components/food/FoodCard'
 import FoodFormModal from '@/components/admin/FoodFormModal'
+import { useCategories, useInvalidateCategoryCache } from '@/hooks/useCategories'
+import { useFoodCatalog, useInvalidateFoodCache } from '@/hooks/useFoodCatalog'
 import { Plus, UtensilsCrossed, Loader2, Search, X, ChevronDown } from 'lucide-react'
 import type { Food, Category } from '@/lib/types'
 
@@ -18,9 +20,6 @@ const sortOptions: { value: SortOption; label: string }[] = [
 ]
 
 export default function AdminFoodsPage() {
-  const [foods, setFoods] = useState<Food[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [editFood, setEditFood] = useState<Food | null>(null)
 
@@ -32,37 +31,21 @@ export default function AdminFoodsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
 
   const supabase = createClient()
+  const invalidateFoods = useInvalidateFoodCache()
+  const invalidateCategories = useInvalidateCategoryCache()
+  const { data: foods = [], isLoading: foodsLoading } = useFoodCatalog({
+    includeUnavailable: true,
+    includeInactiveCategories: true,
+    sort: 'admin',
+  })
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories()
+  const loading = foodsLoading || categoriesLoading
 
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300)
     return () => clearTimeout(timer)
   }, [searchQuery])
-
-  async function loadFoods() {
-    const { data } = await supabase
-      .from('foods')
-      .select('*, category:food_categories(id, name, slug)')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-    if (data) setFoods(data as unknown as Food[])
-    setLoading(false)
-  }
-
-  async function loadCategories() {
-    const { data } = await supabase
-      .from('food_categories')
-      .select('id, name, slug')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-    if (data) setCategories(data)
-  }
-
-  useEffect(() => {
-    loadFoods()
-    loadCategories()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // Lọc, tìm kiếm và sắp xếp danh sách kết quả ngay trên giao diện theo tuỳ chọn
   const filteredFoods = useMemo(() => {
@@ -120,7 +103,9 @@ export default function AdminFoodsPage() {
   async function handleDelete(id: string) {
     if (!confirm('Bạn có chắc muốn xoá món này?')) return
     const { error } = await supabase.from('foods').delete().eq('id', id)
-    if (!error) loadFoods()
+    if (!error) {
+      await invalidateFoods()
+    }
   }
 
   // Logic hiển thị Form Modal và gán dữ liệu món đang muốn sửa
@@ -137,7 +122,7 @@ export default function AdminFoodsPage() {
 
   async function handleSaved() {
     setModalOpen(false)
-    loadFoods()
+    await Promise.all([invalidateFoods(), invalidateCategories()])
   }
 
   return (
@@ -156,7 +141,7 @@ export default function AdminFoodsPage() {
               : `${foods.length} món trong thực đơn`}
           </p>
         </div>
-        <button onClick={handleAdd} className="btn-primary inline-flex items-center gap-2">
+        <button onClick={handleAdd} data-testid="admin-food-add" className="btn-primary inline-flex items-center gap-2">
           <Plus size={16} />
           <span>Thêm món</span>
         </button>
@@ -315,7 +300,7 @@ export default function AdminFoodsPage() {
       {modalOpen && (
         <FoodFormModal
           food={editFood}
-          categories={categories}
+          categories={categories as Category[]}
           onClose={() => setModalOpen(false)}
           onSaved={handleSaved}
         />
