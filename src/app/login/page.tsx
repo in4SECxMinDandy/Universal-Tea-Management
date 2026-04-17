@@ -5,6 +5,7 @@ import { isAuthError } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { LogIn, UserPlus, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react'
 import { TurnstileBox } from '@/components/auth/TurnstileBox'
+import { useAuth } from '@/contexts/AuthContext'
 
 const SUPABASE_CONFIG_ERROR_VI =
   'Chưa cấu hình Supabase: mở file .env.local và đặt NEXT_PUBLIC_SUPABASE_URL (Project URL) cùng NEXT_PUBLIC_SUPABASE_ANON_KEY (anon public key) từ Supabase Dashboard → Settings → API. Sau đó khởi động lại dev server.'
@@ -54,6 +55,14 @@ export default function LoginPage() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
+  const { user, isLoading: authLoading } = useAuth()
+
+  // Redirect nếu đã đăng nhập
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace('/home')
+    }
+  }, [user, authLoading, router])
 
   const onCaptchaToken = useCallback((t: string | null) => {
     setCaptchaToken(t)

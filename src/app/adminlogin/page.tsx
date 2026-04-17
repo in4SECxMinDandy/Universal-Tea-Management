@@ -1,8 +1,10 @@
 'use client'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Settings, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { TurnstileBox } from '@/components/auth/TurnstileBox'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
 
 const SUPABASE_CONFIG_ERROR_VI =
   'Chưa cấu hình Supabase: mở file .env.local và cấu hình NEXT_PUBLIC_SUPABASE_URL và NEXT_PUBLIC_SUPABASE_ANON_KEY.'
@@ -26,6 +28,15 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const supabase = createClient()
+  const { user, isAdmin, isLoading: authLoading } = useAuth()
+  const router = useRouter()
+
+  // Redirect nếu đã đăng nhập với tài khoản admin
+  useEffect(() => {
+    if (!authLoading && user && isAdmin) {
+      router.replace('/admin')
+    }
+  }, [user, isAdmin, authLoading, router])
 
   const onCaptchaToken = useCallback((t: string | null) => {
     setCaptchaToken(t)

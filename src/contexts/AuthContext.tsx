@@ -30,7 +30,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children, initialUser, initialAdmin }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(initialUser ?? null)
   const [isAdmin, setIsAdmin] = useState(initialAdmin ?? false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(initialUser === undefined)
 
   const checkAdmin = useCallback(async (userId: string) => {
     try {
@@ -57,6 +57,7 @@ export function AuthProvider({ children, initialUser, initialAdmin }: AuthProvid
         setUser(null)
         setIsAdmin(false)
       }
+      if (mounted) setIsLoading(false)
     }
 
     init()

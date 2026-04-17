@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useCallback } from 'react'
 import { Menu, X, MessageCircle, Settings, LogOut, ChevronDown, ShoppingBag } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -14,6 +14,7 @@ const navLinks = [
 
 export default function Header() {
   const pathname = usePathname()
+  const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const { user, isAdmin } = useAuth()
@@ -21,16 +22,25 @@ export default function Header() {
 
   const handleLogout = useCallback(async () => {
     try {
+      // Bắt buộc phải chờ server xóa cookie xong trước khi tải lại trang, nếu không request có thể bị hủy
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch (err) {
+      console.error('Logout API failed', err)
+    }
+
+    try {
+      // Xóa local session (bỏ qua nếu lỗi IndexedDB)
       const supabase = createClient()
-      await supabase.auth.signOut()
-    } catch (error) {
-      console.error('Lỗi khi đăng xuất:', error)
-    } finally {
-      if (window.location.pathname === '/home' || window.location.pathname === '/') {
-        window.location.reload()
-      } else {
-        window.location.href = '/home'
-      }
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch (err) {
+      console.error('Local signOut failed', err)
+    }
+
+    // Buộc trình duyệt tải lại hoàn toàn
+    if (window.location.pathname === '/home') {
+      window.location.reload()
+    } else {
+      window.location.href = '/home'
     }
   }, [])
 
@@ -143,13 +153,13 @@ export default function Header() {
                         </Link>
                       )}
                       <div className="border-t border-border-subtle my-1" />
-                  <button
-                    onClick={() => { setUserMenuOpen(false); handleLogout() }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-accent-red hover:bg-accent-red-light/30 cursor-pointer transition-colors duration-200"
-                  >
-                    <LogOut size={14} />
-                    <span>Đăng xuất</span>
-                  </button>
+                      <button
+                        onClick={() => { setUserMenuOpen(false); handleLogout() }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-accent-red hover:bg-accent-red-light/30 cursor-pointer transition-colors duration-200"
+                      >
+                        <LogOut size={14} />
+                        <span>Đăng xuất</span>
+                      </button>
                     </div>
                   )}
                 </div>
